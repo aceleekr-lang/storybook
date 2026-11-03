@@ -1,0 +1,14 @@
+Vercel → 프로젝트 → Settings → Environment Variables 에 아래 네 줄을 넣으세요.
+(Name 칸에 왼쪽, Value 칸에 오른쪽. 다 넣은 뒤 Deployments → Redeploy)
+
+SUPABASE_URL        https://snaldhxucwsaifqrccih.supabase.co
+SUPABASE_ANON_KEY   sb_publishable_Jw04C4E_pWJFd7-IT3gyqw_onzKKmrq
+ANTHROPIC_API_KEY   (console.anthropic.com → API Keys 에서 만든 sk-ant-… 키. 마을작가 앱과 같은 키를 써도 돼요)
+OPENAI_API_KEY      (platform.openai.com → API keys 에서 만든 sk-… 키. 결제 수단 등록·충전 필요)
+
+(선택)
+IMAGE_MODEL         gpt-image-1        ← 비우면 이 값
+IMAGE_QUALITY       medium             ← low / medium / high, 비우면 medium
+
+* ANTHROPIC·OPENAI 키만 직접 발급해서 넣으면 됩니다. 이 파일은 GitHub에 올려도 되지만(공개 키만 들어 있음), 실제 키를 적어 넣은 뒤에는 올리지 마세요.
+* config.js 에도 같은 Supabase 주소와 키가 이미 들어 있어요.

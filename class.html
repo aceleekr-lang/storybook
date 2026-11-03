@@ -1,0 +1,476 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>수업 화면 · 가곡동 이야기책</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Gowun+Dodum&family=Gowun+Batang:wght@400;700&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+/* 레이아웃: 1600×900 무대를 화면에 맞춰 키우고 줄이는 수업용 슬라이드. 포스터의 강·철교·초록 산 톤을 이어받음. 교실 프로젝터용으로 밝은 화면 하나로 고정 */
+:root {
+  color-scheme: light;
+  --paper: #F7F8F0;      /* 옅은 풀빛 종이 */
+  --card: #FFFFFF;
+  --ink: #1D2F5C;        /* 포스터 제목 남색 */
+  --sub: #5A6A80;
+  --leaf: #2F7A45;       /* 산·잎 초록 */
+  --river: #3E8DBA;      /* 밀양강 파랑 */
+  --sun: #F4C234;        /* 포스터 햇살 노랑 */
+  --berry: #E04F6A;      /* 날짜 띠 분홍 */
+  --line: #DCE3D3;
+  --display: 'Jua', 'Gowun Dodum', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  --body: 'Gowun Dodum', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  --book: 'Gowun Batang', 'AppleMyungjo', 'Batang', serif;
+}
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body { word-break: keep-all; background: #E9EEE2; color: var(--ink); font-family: var(--body); overflow: hidden; padding-left: max(0px, env(safe-area-inset-left, 0px)); padding-right: max(0px, env(safe-area-inset-right, 0px)); }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid var(--river); outline-offset: 2px; }
+#wrap { position: relative; width: 100%; height: 100%; overflow: hidden; }
+#stage { position: absolute; left: 50%; top: 50%; width: 1600px; height: 900px; transform-origin: center; background: var(--paper); box-shadow: 0 10px 40px rgba(29, 47, 92, .18); overflow: hidden; }
+.slide { position: absolute; inset: 0; padding: 70px 96px 96px; display: flex; flex-direction: column; gap: 28px; }
+.slide[hidden] { display: none !important; }
+.tag { align-self: flex-start; font-family: var(--display); font-size: 26px; padding: 6px 20px; border-radius: 999px; background: var(--ink); color: #fff; letter-spacing: .02em; }
+.tag.leaf { background: var(--leaf); } .tag.berry { background: var(--berry); } .tag.river { background: var(--river); }
+h1, h2 { font-family: var(--display); font-weight: 400; margin: 0; text-wrap: balance; line-height: 1.2; }
+h1 { font-size: 96px; } h2 { font-size: 68px; }
+.lead { font-size: 34px; line-height: 1.6; margin: 0; color: var(--sub); max-width: 1250px; }
+.big { font-size: 40px; line-height: 1.55; }
+.hl { background: linear-gradient(transparent 58%, rgba(244, 194, 52, .55) 58%); padding: 0 .1em; }
+/* 바닥 풍경 띠 */
+.land { position: absolute; left: 0; right: 0; bottom: 0; height: 120px; pointer-events: none; }
+/* 아래 막대 */
+#bar { position: absolute; left: 0; right: 0; bottom: 0; height: 64px; display: flex; align-items: center; gap: 14px; padding: 0 22px; background: rgba(255, 255, 255, .92); border-top: 2px solid var(--line); z-index: 5; font-size: 22px; }
+#bar .grow { flex: 1; min-width: 0; }
+.bb { border: 2px solid var(--line); background: var(--card); border-radius: 12px; min-height: 44px; padding: 0 16px; font-size: 22px; }
+.bb:hover { border-color: var(--ink); }
+#prog { position: absolute; left: 0; top: 0; height: 6px; background: var(--sun); z-index: 6; transition: width .25s; }
+#clock, #pageNo { font-variant-numeric: tabular-nums; color: var(--sub); }
+#secName { font-family: var(--display); color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* 타이머 */
+.timer { display: inline-flex; align-items: center; gap: 18px; padding: 14px 26px; border-radius: 22px; background: var(--card); border: 3px solid var(--ink); align-self: flex-start; }
+.timer b { font-family: var(--display); font-size: 64px; font-weight: 400; font-variant-numeric: tabular-nums; min-width: 190px; text-align: center; }
+.timer.done b { color: var(--berry); }
+.timer button { border: 0; background: var(--ink); color: #fff; border-radius: 14px; padding: 12px 22px; font-size: 26px; }
+.timer button.ghost { background: var(--line); color: var(--ink); }
+/* 표지 */
+.cover { background: linear-gradient(180deg, #DCEEF7 0%, #F7F8F0 62%); align-items: center; text-align: center; justify-content: center; gap: 22px; }
+.cover .kicker { font-family: var(--display); font-size: 34px; color: var(--leaf); }
+.cover h1 { font-size: 118px; color: var(--ink); }
+.cover h1 em { font-style: normal; color: var(--leaf); }
+.datebar { font-family: var(--display); font-size: 40px; background: var(--berry); color: #fff; padding: 10px 40px; border-radius: 999px; }
+.cover .note { font-size: 30px; color: var(--sub); }
+/* 표 */
+.prog-table { width: 100%; border-collapse: collapse; font-size: 32px; background: var(--card); border-radius: 18px; overflow: hidden; }
+.prog-table td { padding: 20px 28px; border-bottom: 2px solid var(--line); }
+.prog-table td:first-child { font-family: var(--display); color: var(--river); width: 280px; font-variant-numeric: tabular-nums; }
+.prog-table td:last-child { color: var(--sub); text-align: right; width: 300px; }
+.prog-table tr.now td { background: #FFF6D6; }
+/* 순서 제목 카드 */
+.titlecard { justify-content: center; align-items: flex-start; background: linear-gradient(135deg, var(--paper) 55%, #E3F0E6 100%); }
+.titlecard .who { font-size: 44px; color: var(--leaf); font-family: var(--display); }
+.titlecard .time { font-size: 30px; color: var(--sub); }
+/* 일정 */
+.sched { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+.sc { background: var(--card); border-radius: 20px; padding: 22px 24px; border: 2px solid var(--line); display: grid; gap: 8px; align-content: start; }
+.sc .n { font-family: var(--display); font-size: 30px; color: #fff; width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center; }
+.sc .d { font-family: var(--display); font-size: 32px; }
+.sc .t { font-size: 25px; line-height: 1.45; color: var(--sub); }
+.sc.today { border-color: var(--sun); box-shadow: 0 0 0 5px rgba(244, 194, 52, .45); }
+/* 자기소개 */
+.intro3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; }
+.i3 { background: var(--card); border-radius: 26px; padding: 34px; display: grid; gap: 14px; border-top: 12px solid var(--leaf); }
+.i3:nth-child(2) { border-top-color: var(--river); } .i3:nth-child(3) { border-top-color: var(--sun); }
+.i3 b { font-family: var(--display); font-size: 46px; font-weight: 400; }
+.i3 span { font-size: 30px; color: var(--sub); line-height: 1.5; }
+/* 목표 */
+.goals { display: grid; gap: 22px; margin: 0; padding: 0; list-style: none; counter-reset: g; }
+.goals li { counter-increment: g; display: flex; gap: 26px; align-items: center; font-size: 44px; background: var(--card); border-radius: 22px; padding: 24px 34px; }
+.goals li::before { content: counter(g); font-family: var(--display); font-size: 40px; color: #fff; background: var(--leaf); width: 72px; height: 72px; border-radius: 50%; display: grid; place-items: center; flex: none; }
+.goals small { display: block; font-size: 28px; color: var(--sub); }
+/* 12쪽 구조 */
+.twelve { display: grid; grid-template-columns: repeat(12, 1fr); gap: 12px; }
+.tw { aspect-ratio: 152 / 225; border-radius: 10px; display: flex; flex-direction: column; justify-content: space-between; padding: 12px 10px; font-size: 21px; line-height: 1.3; }
+.tw b { font-family: var(--display); font-size: 30px; font-weight: 400; }
+.tw.txt { background: #fff; border: 3px solid var(--ink); }
+.tw.pic { background: linear-gradient(180deg, #BFE0F0, #CFE7C4); border: 3px solid var(--river); }
+.tw.end { background: var(--ink); color: #fff; border: 3px solid var(--ink); }
+.facts { display: flex; gap: 22px; flex-wrap: wrap; }
+.fact { background: var(--card); border-radius: 18px; padding: 18px 28px; font-size: 30px; }
+.fact b { font-family: var(--display); font-weight: 400; color: var(--leaf); margin-right: 10px; }
+/* 샘플 책 */
+.bookrow { flex: 1; display: grid; grid-template-columns: auto 1fr; gap: 40px; align-items: start; min-height: 0; margin-bottom: 10px; }
+.spread { display: flex; justify-content: center; gap: 0; filter: drop-shadow(0 12px 24px rgba(29, 47, 92, .22)); }
+.pg { width: 336px; height: 497px; background: #fff; position: relative; overflow: hidden; }
+.spread .pg:first-child:not(:only-child) { border-right: 1px solid #e6e2d8; }
+.pg .folio { position: absolute; bottom: 14px; left: 0; right: 0; text-align: center; font-size: 15px; color: #999; font-family: var(--book); }
+.pg.text { padding: 56px 38px; font-family: var(--book); font-size: 19px; line-height: 1.95; color: #2b2b2b; }
+.pg.text p { margin: 0 0 .6em; text-indent: 1em; }
+.pg.pic svg, .pg.cov svg { width: 100%; height: 100%; display: block; }
+.pg.cov .ct { position: absolute; left: 34px; right: 34px; bottom: 60px; background: rgba(255, 255, 255, .9); border-radius: 6px; padding: 18px 20px; text-align: center; font-family: var(--book); }
+.pg.cov .ct b { display: block; font-size: 34px; }
+.pg.cov .ct span { font-size: 16px; color: #666; }
+.pg.bio { padding: 52px 38px; font-family: var(--book); font-size: 18px; line-height: 1.85; }
+.pg.bio h4 { font-size: 26px; margin: 0 0 18px; }
+.pg.bio .face { width: 120px; height: 120px; border-radius: 50%; overflow: hidden; margin-bottom: 18px; }
+.role { position: absolute; top: 10px; left: 10px; font-family: var(--display); font-size: 18px; background: var(--sun); color: var(--ink); padding: 3px 12px; border-radius: 999px; z-index: 2; }
+.noroles .role { display: none; }
+.bookside { display: grid; gap: 18px; align-content: center; }
+.bookside .why { font-size: 30px; line-height: 1.55; background: var(--card); border-radius: 18px; padding: 22px 26px; min-height: 190px; }
+.bookside .why b { font-family: var(--display); font-weight: 400; color: var(--leaf); display: block; font-size: 34px; margin-bottom: 6px; }
+.row { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
+.btn { border: 3px solid var(--ink); background: var(--card); border-radius: 16px; padding: 12px 26px; font-size: 28px; font-family: var(--display); }
+.btn.main { background: var(--ink); color: #fff; }
+.dots { display: flex; gap: 10px; }
+.dots i { width: 18px; height: 18px; border-radius: 50%; background: var(--line); }
+.dots i.on { background: var(--leaf); }
+.fiction { font-size: 22px; color: var(--sub); }
+/* 앱 접속 */
+.join { display: grid; grid-template-columns: 420px 1fr; gap: 60px; align-items: center; flex: 1; }
+.qrbox { background: #fff; border-radius: 28px; padding: 30px; display: grid; gap: 16px; justify-items: center; border: 4px solid var(--ink); }
+.qrbox #qr, .qrbox #qr0 { width: 340px; height: 340px; display: grid; place-items: center; }
+.qrbox #qr img, .qrbox #qr0 img { width: 100%; height: auto; }
+.qrbox .url { font-size: 24px; font-variant-numeric: tabular-nums; word-break: break-all; text-align: center; }
+.qrbox .need { font-size: 26px; color: var(--berry); text-align: center; line-height: 1.5; }
+.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 18px; counter-reset: s; }
+.steps li { counter-increment: s; display: grid; grid-template-columns: 70px 1fr; gap: 20px; align-items: center; font-size: 36px; line-height: 1.4; }
+.steps li::before { content: counter(s); font-family: var(--display); color: var(--river); font-size: 52px; text-align: center; }
+.steps small { display: block; font-size: 26px; color: var(--sub); }
+/* 기억 카드 */
+.cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; perspective: 1400px; }
+.view-cards .mc { height: 150px; }
+.mc { height: 150px; border: 0; padding: 0; background: none; position: relative; transform-style: preserve-3d; transition: transform .6s; }
+.mc.open { transform: rotateY(180deg); }
+.mc > span { position: absolute; inset: 0; border-radius: 22px; display: grid; place-items: center; backface-visibility: hidden; padding: 20px; text-align: center; }
+.mc .back { background: repeating-linear-gradient(45deg, var(--leaf) 0 18px, #2A6E3E 18px 36px); color: #fff; font-family: var(--display); font-size: 40px; }
+.mc .front { background: var(--card); border: 4px solid var(--sun); transform: rotateY(180deg); font-family: var(--display); font-size: 38px; line-height: 1.35; color: var(--ink); }
+.mc.pick .front { background: #FFF6D6; box-shadow: 0 0 0 6px var(--berry); }
+@media (prefers-reduced-motion: reduce) { .mc { transition: none; } #prog { transition: none; } }
+/* 짝 이야기 */
+.qs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 26px; }
+.q { background: var(--card); border-radius: 24px; padding: 30px; font-size: 36px; line-height: 1.45; display: grid; gap: 10px; }
+.q b { font-family: var(--display); font-weight: 400; font-size: 46px; color: var(--river); }
+/* 룰렛 */
+.roul { display: grid; grid-template-columns: 1fr 1fr; gap: 50px; align-items: center; flex: 1; }
+.rname { font-family: var(--display); font-size: 150px; text-align: center; background: var(--card); border-radius: 30px; padding: 40px 20px; min-height: 260px; display: grid; place-items: center; border: 5px solid var(--sun); }
+.picked { font-size: 30px; color: var(--sub); line-height: 1.6; }
+/* 예고 */
+.next { display: grid; grid-template-columns: 1fr 1fr; gap: 34px; }
+.nx { background: var(--card); border-radius: 26px; padding: 34px 38px; display: grid; gap: 16px; align-content: start; }
+.nx h3 { font-family: var(--display); font-weight: 400; font-size: 44px; margin: 0; }
+.nx ul { margin: 0; padding-left: 1.1em; font-size: 32px; line-height: 1.7; }
+/* 강사 노트 */
+#notes { position: absolute; left: 0; right: 0; bottom: 64px; background: rgba(29, 47, 92, .94); color: #fff; font-size: 24px; line-height: 1.6; padding: 18px 28px; z-index: 4; max-height: 240px; overflow: auto; }
+/* 설정·목차 창 */
+.panel { position: fixed; inset: 0; background: rgba(20, 30, 50, .45); display: grid; place-items: center; z-index: 20; padding: 16px max(16px, env(safe-area-inset-right, 0px)) 16px max(16px, env(safe-area-inset-left, 0px)); }
+.panel > div { background: #fff; color: var(--ink); border-radius: 18px; padding: 24px; width: min(560px, 100%); max-height: 90vh; overflow: auto; display: grid; gap: 14px; font-size: 16px; }
+.panel h3 { font-family: var(--display); font-weight: 400; font-size: 26px; margin: 0; }
+.panel label { display: grid; gap: 6px; font-weight: 700; }
+.panel input, .panel textarea { font: inherit; padding: 10px 12px; border: 2px solid var(--line); border-radius: 10px; width: 100%; box-sizing: border-box; }
+.panel .muted { color: var(--sub); font-size: 14px; font-weight: 400; }
+.toc { list-style: none; padding: 0; margin: 0; display: grid; gap: 4px; }
+.toc button { width: 100%; text-align: left; border: 0; background: none; padding: 8px 10px; border-radius: 8px; font-size: 16px; display: flex; gap: 10px; }
+.toc button:hover, .toc button.cur { background: #EEF3E8; }
+.toc .tm { color: var(--sub); font-variant-numeric: tabular-nums; width: 52px; flex: none; }
+.pbtn { border: 2px solid var(--ink); background: #fff; border-radius: 10px; padding: 10px 16px; font-size: 16px; }
+.pbtn.main { background: var(--ink); color: #fff; }
+.pg { box-sizing: border-box; }
+.live-n { font-size: 28px; color: var(--sub); text-align: center; }
+.live-n b { color: var(--ink); font-family: var(--display); font-weight: 400; font-size: 1.2em; } .live-n .warn { color: var(--berry); }
+#pending { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; font-size: 24px; } #pending p { margin: 0; color: var(--berry); font-family: var(--display); }
+.chip { --c: var(--ink); border: 3px solid var(--c); background: #fff; color: var(--ink); border-radius: 999px; padding: 6px 18px; font-size: 26px; font-family: var(--display); }
+button.chip:hover { background: color-mix(in srgb, var(--c) 14%, #fff); }
+.chiprow { display: flex; flex-wrap: wrap; gap: 10px; }
+.subs { background: rgba(255,255,255,.75); border-radius: 18px; padding: 14px 20px; display: grid; gap: 10px; font-size: 26px; }
+.subs p { margin: 0; } .subs small { color: var(--sub); font-size: 20px; margin-left: 8px; } .subs .miss { color: var(--sub); font-size: 22px; }
+.muted { color: var(--sub); }
+.livemap { height: 470px; border-radius: 18px; border: 3px solid var(--line); }
+.wall { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; align-content: start; flex: 1; overflow: auto; min-height: 0; }
+.note { --c: var(--sun); text-align: left; border: 0; border-top: 10px solid var(--c); background: #fff; border-radius: 14px; padding: 16px 18px; display: grid; gap: 8px; font-size: 25px; line-height: 1.45; box-shadow: 0 3px 10px rgba(29,47,92,.08); }
+.note b { font-family: var(--display); font-weight: 400; color: var(--sub); font-size: 22px; }
+#ansv { position: absolute; inset: 0; background: rgba(20,30,50,.5); z-index: 8; display: grid; place-items: center; }
+.ansv-in { --c: var(--leaf); background: #fff; border-radius: 30px; border-top: 16px solid var(--c); width: 1100px; max-height: 760px; overflow: auto; padding: 44px 56px; display: grid; gap: 22px; }
+.ansv-in h2 { font-size: 72px; } .ansv-k { margin: 0; font-family: var(--display); color: var(--sub); font-size: 28px; }
+.ansv-f b { font-family: var(--display); font-weight: 400; font-size: 30px; color: var(--leaf); } .ansv-f p { margin: 6px 0 0; font-size: 42px; line-height: 1.5; }
+.ansv-in .btn { justify-self: end; }
+#liveDot { width: 14px; height: 14px; border-radius: 50%; background: #bbb; flex: none; } #liveDot.on { background: #2BB673; box-shadow: 0 0 0 4px rgba(43,182,115,.2); } #liveDot.off { background: var(--berry); }
+#gate { position: fixed; inset: 0; z-index: 30; background: var(--paper); display: grid; place-items: center; text-align: center; padding: 24px; font-size: 18px; }
+#gate > div { display: grid; gap: 16px; max-width: 520px; } #gate h1 { font-size: 34px; } #gate a { color: #fff; background: var(--ink); padding: 14px 22px; border-radius: 12px; text-decoration: none; font-weight: 700; }
+</style>
+
+</head>
+<body>
+<div id="gate" hidden><div><h1>수업 화면</h1><p id="gateMsg">이 화면은 강사·운영자만 열 수 있어요. 같은 브라우저에서 앱에 강사·운영자로 로그인한 뒤 다시 열어 주세요.</p><a href="./">앱으로 가서 로그인하기</a><button class="pbtn" onclick="location.reload()">다시 열기</button></div></div>
+<div id="wrap">
+  <div id="stage">
+    <div id="prog"></div>
+
+    <!-- 0 대기 -->
+    <section class="slide cover" data-sec="대기" data-time="18:30" data-note="18:30~19:00 자리배정·착석. QR은 이 앱 주소로 저절로 만들어져요. 가입 신청은 9번째 화면(앱 가입)에서 바로 승인할 수 있어요.">
+      <div class="kicker">상상창고 조성(문화복지 역량강화)</div>
+      <h1>AI를 활용한<br><em>가곡동 이야기</em> 책 만들기</h1>
+      <div class="datebar">1회차 · 11월 3일(화) 저녁 7시</div>
+      <div class="row" style="gap:28px;align-items:center;justify-content:center">
+        <div class="qrbox" style="padding:16px;border-width:3px"><div id="qr0" style="width:170px;height:170px"></div></div>
+        <p class="note" style="text-align:left;margin:0">자리에 앉아 잠시 기다려 주세요.<br>일찍 오셨다면 휴대폰 카메라로<br>QR을 찍어 먼저 가입하고<br>“오늘 수업” 탭에 자기소개를 적어 주세요.</p>
+      </div>
+      <div class="live-n" data-live="signup"></div>
+      <svg class="land" viewBox="0 0 1600 120" preserveAspectRatio="none" aria-hidden="true"><path d="M0 70 Q200 20 420 60 T860 50 T1300 40 T1600 60 V120 H0Z" fill="#9CCB8A"/><path d="M0 95 Q400 70 800 92 T1600 85 V120 H0Z" fill="#6FAE6A"/></svg>
+    </section>
+
+    <!-- 1 개강식 순서 -->
+    <section class="slide" data-sec="개강식" data-time="19:00" data-note="오늘 순서를 한 번 보여 드리고 바로 축사로 넘어가요.">
+      <span class="tag">개강식</span>
+      <h2>오늘 저녁 순서</h2>
+      <table class="prog-table">
+        <tr><td>18:30~19:00</td><td>자리배정 및 착석</td><td>용역사</td></tr>
+        <tr><td>19:00~19:05</td><td>축사 및 격려사</td><td>전장표 센터장</td></tr>
+        <tr><td>19:05~19:20</td><td>가곡동 도시재생사업 및 도시재생 소개</td><td>박애경 팀장</td></tr>
+        <tr><td>19:20~19:30</td><td>강사 소개 · 교육과정 안내 · 교육생 인사</td><td>용역사</td></tr>
+        <tr class="now"><td>19:30~21:00</td><td>1회차 수업 — 샘플 책 보기 · 앱 가입 · 이야기 지도</td><td>강사</td></tr>
+      </table>
+    </section>
+
+    <!-- 2 축사 -->
+    <section class="slide titlecard" data-sec="개강식" data-time="19:00" data-note="센터장님 축사·격려사 (5분)">
+      <span class="tag leaf">개강식</span>
+      <h1>축사 및 격려사</h1>
+      <div class="who">밀양도시재생지원센터 전장표 센터장</div>
+      <div class="time">19:00 ~ 19:05</div>
+    </section>
+
+    <!-- 3 도시재생 소개 -->
+    <section class="slide titlecard" data-sec="개강식" data-time="19:05" data-note="팀장님 발표 자료가 따로 있으면 이 화면에서 바꿔 띄워요 (15분).">
+      <span class="tag leaf">개강식</span>
+      <h1>가곡동 도시재생사업<br>그리고 도시재생 이야기</h1>
+      <div class="who">가곡재생팀 박애경 팀장</div>
+      <div class="time">19:05 ~ 19:20</div>
+    </section>
+
+    <!-- 4 강사 소개 -->
+    <section class="slide titlecard" data-sec="개강식" data-time="19:20" data-note="강사 이름과 한 줄 소개는 ⚙ 설정에서 바꿀 수 있어요.">
+      <span class="tag river">강사 소개</span>
+      <h1>함께할 선생님</h1>
+      <div class="who" data-bind="teacher">강사 이름</div>
+      <div class="time" data-bind="teacherLine" style="font-size:34px">한 줄 소개를 설정에서 적어 주세요</div>
+    </section>
+
+    <!-- 5 일정 -->
+    <section class="slide" data-sec="교육과정 안내" data-time="19:22" data-note="매주 화·수 저녁 7~9시, 총 8회. 6회차(11/18)가 원고 마감이라는 점을 꼭 짚어 주세요. 마지막 날 낭독회와 마을작가 임명장.">
+      <span class="tag river">교육과정 안내</span>
+      <h2>매주 화·수 저녁 7시, 여덟 번 만나요</h2>
+      <div class="sched">
+        <div class="sc today"><span class="n" style="background:#E04F6A">1</span><span class="d">11/3 화 · 오늘</span><span class="t">오리엔테이션 · 이야기 지도 그리기</span></div>
+        <div class="sc"><span class="n" style="background:#3E8DBA">2</span><span class="d">11/4 수</span><span class="t">AI와 함께 기억 꺼내기</span></div>
+        <div class="sc"><span class="n" style="background:#2BA39A">3</span><span class="d">11/10 화</span><span class="t">12쪽 구성표 · 초고 쓰기</span></div>
+        <div class="sc"><span class="n" style="background:#EE7B30">4</span><span class="d">11/11 수</span><span class="t">글 완성 · 첫 독자 의견 나누기</span></div>
+        <div class="sc"><span class="n" style="background:#8E5BC4">5</span><span class="d">11/17 화</span><span class="t">그림체 정하기 · 장면 그림 만들기</span></div>
+        <div class="sc"><span class="n" style="background:#2F9AC7">6</span><span class="d">11/18 수</span><span class="t">그림 완성 · 퇴고 <b style="color:#E04F6A">(원고 마감)</b></span></div>
+        <div class="sc"><span class="n" style="background:#D9488A">7</span><span class="d">11/24 화</span><span class="t">교정지 확인 · 낭독 연습</span></div>
+        <div class="sc"><span class="n" style="background:#2E5BB8">8</span><span class="d">11/25 수</span><span class="t">작품 낭독회 · 마을작가 임명장 수여</span></div>
+      </div>
+    </section>
+
+    <!-- 6 교육생 인사 -->
+    <section class="slide" data-sec="교육생 인사" data-time="19:25" data-note="한 분당 30초 안쪽. '기억 속 장소'는 오늘 지도 활동의 씨앗이 되니 강사가 메모해 두면 좋아요.">
+      <span class="tag river">교육생 인사</span>
+      <h2>30초 자기소개, 세 가지만</h2>
+      <div class="intro3">
+        <div class="i3"><b>이름</b><span>불리고 싶은 이름도 좋아요</span></div>
+        <div class="i3"><b>가곡동과의 인연</b><span>산 지 몇 년, 일하는 곳, 지나다니는 길…</span></div>
+        <div class="i3"><b>기억 속 장소 하나</b><span>밀양이 아니어도 괜찮아요.<br>내가 자란 동네도 좋아요</span></div>
+      </div>
+      <div class="subs" data-act="s1_intro"></div>
+    </section>
+
+    <!-- 7 오늘의 목표 -->
+    <section class="slide" data-sec="1회차 수업" data-time="19:30" data-note="수업 시작. 오늘 끝날 때 손에 남는 것 세 가지를 먼저 보여 줘요.">
+      <span class="tag berry">1회차 수업 · 19:30</span>
+      <h2>오늘 집에 가실 때 남는 것</h2>
+      <ol class="goals">
+        <li><span>내가 만들 <span class="hl">12쪽 이야기책</span>의 모양을 안다<small>샘플 책을 한 장씩 넘겨 봐요</small></span></li>
+        <li><span>휴대폰에 <span class="hl">이야기책 앱</span>이 들어 있다<small>가입하고, 다음 시간부터 바로 써요</small></span></li>
+        <li><span><span class="hl">이야기 지도</span>에 내 기억의 장소가 세 곳 이상 찍혀 있다<small>이게 내 책의 첫 재료가 돼요</small></span></li>
+      </ol>
+    </section>
+
+    <!-- 8 12쪽 구조 -->
+    <section class="slide" data-sec="우리가 만들 책" data-time="19:33" data-note="글 쪽과 그림 쪽이 번갈아 나온다는 것만 기억하면 돼요. 글은 한 쪽에 원고지 2~3매 정도로 짧아요.">
+      <span class="tag berry">우리가 만들 책</span>
+      <h2>한 사람이 12쪽, 모아서 한 권</h2>
+      <div class="twelve">
+        <div class="tw end"><b>1</b>제목면</div>
+        <div class="tw txt"><b>2</b>글 1</div><div class="tw pic"><b>3</b>그림 1</div>
+        <div class="tw txt"><b>4</b>글 2</div><div class="tw pic"><b>5</b>그림 2</div>
+        <div class="tw txt"><b>6</b>글 3</div><div class="tw pic"><b>7</b>그림 3</div>
+        <div class="tw txt"><b>8</b>글 4</div><div class="tw pic"><b>9</b>그림 4</div>
+        <div class="tw txt"><b>10</b>글 5</div><div class="tw pic"><b>11</b>그림 5</div>
+        <div class="tw end"><b>12</b>지은이 소개</div>
+      </div>
+      <div class="facts">
+        <div class="fact"><b>판형</b>신국판 152 × 225mm</div>
+        <div class="fact"><b>글</b>다섯 쪽, 한 쪽에 짧은 장면 하나</div>
+        <div class="fact"><b>그림</b>다섯 장, AI로 함께 그려요</div>
+        <div class="fact"><b>완성</b>공동 이야기책 1권 · 11/25 낭독회</div>
+      </div>
+    </section>
+
+    <!-- 9 샘플 책 -->
+    <section class="slide" data-sec="샘플 이야기책" data-time="19:35" data-sample data-note="한 장씩 넘기며 '이 쪽은 무슨 역할인지' 오른쪽 설명을 읽어 줘요. 지어낸 예시라는 점을 꼭 말씀해 주세요. 책 안의 키보드 ←→가 아니라 아래 '다음 장' 버튼으로 넘겨요.">
+      <span class="tag berry">샘플 이야기책 함께 보기</span>
+      <div class="bookrow">
+        <div class="spread" id="spread"></div>
+        <div class="bookside">
+          <div class="why" id="why"></div>
+          <div class="row"><button class="btn" id="bPrev">이전 장</button><button class="btn main" id="bNext">다음 장</button><button class="btn" id="bRoles">역할 표시 끄기</button></div>
+          <div class="dots" id="bDots"></div>
+          <p class="fiction">※ 수업을 위해 지어낸 예시 이야기예요. 실제 인물·가게가 아니에요.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 10 앱 접속 -->
+    <section class="slide" data-sec="앱 가입" data-time="19:50" data-note="가입 신청이 들어오면 운영자 계정 → 참여자 탭 '승인 기다리는 중'에서 바로 승인해 주세요. 휴대폰이 어려운 분은 옆자리 짝과 함께. 비밀번호는 잊지 않게 수첩에 적어 두라고 안내.">
+      <span class="tag river">이야기책 앱 가입 · 20분</span>
+      <h2>휴대폰으로 앱에 들어가요</h2>
+      <div class="join">
+        <div class="qrbox"><div id="qr"></div><div class="url" id="urlText"></div><div class="live-n" data-live="signup"></div></div>
+        <ol class="steps">
+          <li><span>카메라로 QR을 찍고 나온 주소를 눌러요<small>안 되면 위 주소를 인터넷 창에 직접 적어요</small></span></li>
+          <li><span><b>가입하기</b> → 이름 · 휴대폰 번호 · 비밀번호<small>비밀번호는 4자 이상, 잊지 않게 적어 두세요</small></span></li>
+          <li><span>안내를 읽고 체크 → <b>가입 신청하기</b><small>AI 기능 동의에도 체크해야 2회차 AI 인터뷰를 쓸 수 있어요</small></span></li>
+          <li><span>선생님이 승인하면 <b>들어가기</b><small>홈 화면에 추가해 두면 다음부터 바로 열려요</small></span></li>
+          <li style="display:block"><div id="pending"></div></li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- 11 쉬는 시간 -->
+    <section class="slide titlecard" data-sec="쉬는 시간" data-time="20:10" data-timer="5" data-note="5분 휴식. 이때 승인 안 된 분이 없는지 참여자 탭을 확인해요.">
+      <span class="tag">쉬는 시간</span>
+      <h1>5분 쉬어 갈게요</h1>
+      <div class="timer"><b>05:00</b><button data-t="go">시작</button><button class="ghost" data-t="reset">처음으로</button></div>
+      <div class="time">가입이 안 된 분은 선생님께 말씀해 주세요</div>
+    </section>
+
+    <!-- 12 기억 카드 -->
+    <section class="slide" data-sec="이야기 지도" data-time="20:15" data-note="카드를 하나씩 눌러 뒤집거나 '한 장 뽑기'로 무작위로 뽑아요. 뽑힌 질문에 떠오르는 장소를 각자 수첩이나 휴대폰 메모에 적게 해요 (3분).">
+      <span class="tag leaf">이야기 지도 그리기 1 · 기억 카드</span>
+      <h2 style="font-size:56px">어떤 장소가 떠오르세요?</h2>
+      <div class="cards" id="cards"></div>
+      <div class="row"><button class="btn main" id="cDraw">한 장 뽑기</button><button class="btn" id="cAll">모두 뒤집기</button><button class="btn" id="cReset">처음으로</button></div>
+      <div class="subs" data-act="s1_card"></div>
+    </section>
+
+    <!-- 13 짝 이야기 -->
+    <section class="slide" data-sec="이야기 지도" data-time="20:20" data-timer="6" data-note="둘씩 짝. 한 사람 3분씩, 듣는 사람이 아래 세 질문을 물어봐 줘요. 3분 지나면 역할을 바꿔요.">
+      <span class="tag leaf">이야기 지도 그리기 2 · 짝 이야기</span>
+      <h2>짝에게 한 곳만 이야기해 주세요</h2>
+      <div class="qs">
+        <div class="q"><b>언제?</b>몇 살 때, 무슨 계절이었나요?</div>
+        <div class="q"><b>누구와?</b>그곳에 누가 함께 있었나요?</div>
+        <div class="q"><b>무엇이?</b>보이고, 들리고, 냄새나던 것은요?</div>
+      </div>
+      <div class="timer"><b>06:00</b><button data-t="go">시작</button><button class="ghost" data-t="reset">처음으로</button></div>
+    </section>
+
+    <!-- 14 앱에 남기기 -->
+    <section class="slide" data-sec="이야기 지도" data-time="20:30" data-timer="12" data-note="앱의 '이야기 지도' 탭. 장소 이름은 꼭, 언제·기억은 짧아도 돼요. 지도에서 장소 찾기 어려운 분은 대충 근처를 눌러도 된다고 안내. 다 한 분은 두 곳, 세 곳 더.">
+      <span class="tag leaf">이야기 지도 그리기 3 · 앱에 남기기</span>
+      <h2 style="font-size:56px">앱의 이야기 지도에 콕 찍어요</h2>
+      <div class="join" style="grid-template-columns:.85fr 1.15fr;gap:40px;align-items:start">
+        <ol class="steps">
+          <li><span>앱 위쪽 메뉴에서 <b>이야기 지도</b></span></li>
+          <li><span>지도를 움직여 그 장소를 찾고 <b>손가락으로 콕</b><small>정확하지 않아도 근처면 괜찮아요</small></span></li>
+          <li><span><b>장소 이름 · 언제 · 어떤 기억</b>을 적고 남기기<small>짝에게 한 이야기를 그대로 적어도 좋아요</small></span></li>
+          <li><span>목표는 <span class="hl">세 곳 이상</span></span></li>
+        </ol>
+        <div style="display:grid;gap:14px">
+          <div id="liveMap" class="livemap" style="height:390px"></div>
+          <div class="row" style="align-items:stretch;flex-wrap:nowrap"><div class="timer" style="padding:10px 18px"><b style="font-size:48px;min-width:140px">12:00</b><button data-t="go">시작</button><button class="ghost" data-t="reset">처음으로</button></div>
+          <div class="subs" data-live="pins" style="flex:1;min-width:0"></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 15 발표 룰렛 -->
+    <section class="slide" data-sec="함께 보기" data-time="20:42" data-note="이름은 앱에 가입·승인된 참여자에서 저절로 뽑혀요. 서너 분 뽑아 '내가 찍은 장소 하나'를 30초씩 소개. 강사 화면에서 앱 지도를 같이 띄워 보면 좋아요.">
+      <span class="tag leaf">함께 보기 · 발표</span>
+      <h2>누구의 장소를 들어 볼까요?</h2>
+      <div class="roul">
+        <div class="rname" id="rName">?</div>
+        <div style="display:grid;gap:22px">
+          <p class="lead" style="font-size:32px">뽑힌 분은 지도에 남긴 장소 하나를 30초 동안 소개해 주세요.</p>
+          <div class="row"><button class="btn main" id="rSpin">이름 뽑기</button><button class="btn" id="rReset">처음으로</button></div>
+          <div class="picked" id="rPicked"></div>
+          <div class="picked" id="rPins"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 소감 -->
+    <section class="slide" data-sec="마무리" data-time="20:50" data-note="앱 '오늘 수업' 탭 → 오늘 한 줄 소감. 적는 대로 붙어요. 누르면 크게 보여요.">
+      <span class="tag">마무리</span>
+      <h2>오늘 한 줄 소감</h2>
+      <p class="lead" style="font-size:28px">앱 “오늘 수업” 탭 맨 아래에 한 줄 남겨 주세요.</p>
+      <div class="wall" data-wall="s1_exit"></div>
+    </section>
+
+    <!-- 16 다음 시간 -->
+    <section class="slide" data-sec="마무리" data-time="20:52" data-note="숙제는 부담 없이. 옛 사진은 2·6회차 그림 작업에 쓰여요.">
+      <span class="tag">마무리</span>
+      <h2>내일 또 만나요</h2>
+      <div class="next">
+        <div class="nx"><h3>2회차 · 11월 4일(수) 저녁 7시</h3><ul><li>생성형 AI는 무엇을 잘하고, 무엇을 못할까</li><li>AI 인터뷰로 기억 꺼내기</li><li>내 이야기의 주제 · 독자 · 핵심 메시지 정하기</li></ul></div>
+        <div class="nx"><h3>집에서 해 오면 좋은 것</h3><ul><li>이야기 지도에 장소 두 곳 더</li><li>그 장소와 관련된 옛 사진이 있으면 휴대폰으로 찍어 두기</li><li>휴대폰 충전해서 오기</li></ul></div>
+      </div>
+    </section>
+
+    <!-- 17 끝 -->
+    <section class="slide cover" data-sec="마무리" data-time="21:00" data-note="수고하셨습니다.">
+      <div class="kicker">1회차를 마칩니다</div>
+      <h1>오늘 꺼낸 장소가<br><em>책의 첫 장</em>이 돼요</h1>
+      <p class="note">가곡동 상상창고 2층 마을공작소 · 문의 070-4148-3373</p>
+      <svg class="land" viewBox="0 0 1600 120" preserveAspectRatio="none" aria-hidden="true"><path d="M0 70 Q200 20 420 60 T860 50 T1300 40 T1600 60 V120 H0Z" fill="#9CCB8A"/><path d="M0 95 Q400 70 800 92 T1600 85 V120 H0Z" fill="#6FAE6A"/></svg>
+    </section>
+
+    <div id="ansv" hidden></div>
+    <div id="notes" hidden></div>
+    <div id="bar">
+      <button class="bb" id="pPrev" aria-label="이전 화면">◀</button>
+      <button class="bb" id="pNext" aria-label="다음 화면">▶</button>
+      <span id="pageNo"></span>
+      <span class="grow" id="secName"></span>
+      <span id="liveDot" title="실시간 연결 확인 중"></span><span id="clock"></span>
+      <button class="bb" id="bToc">목차</button>
+      <button class="bb" id="bNote">강사 노트</button>
+      <button class="bb" id="bFull">전체 화면</button>
+      <button class="bb" id="bSet" aria-label="설정">⚙ 설정</button>
+    </div>
+  </div>
+</div>
+
+<div class="panel" id="setPanel" hidden><div>
+  <h3>수업 설정</h3>
+  <p class="muted">이 컴퓨터의 브라우저에만 저장돼요.</p>
+  <label for="sTeacher">강사 이름<input id="sTeacher" placeholder="예) 홍길동 작가"></label>
+  <label for="sLine">강사 한 줄 소개<input id="sLine" placeholder="예) 그림책 작가, 가곡동 골목 산책을 좋아해요"></label>
+  <div class="row" style="justify-content:flex-end"><button class="pbtn" data-close>닫기</button><button class="pbtn main" id="sSave">저장</button></div>
+</div></div>
+<div class="panel" id="tocPanel" hidden><div>
+  <h3>목차</h3>
+  <ul class="toc" id="toc"></ul>
+  <div class="row" style="justify-content:flex-end"><button class="pbtn" data-close>닫기</button></div>
+</div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="config.js"></script>
+<script src="curriculum.js"></script>
+<script src="class.js"></script>
+</body>
+</html>
