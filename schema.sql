@@ -746,6 +746,11 @@ begin
                  from ys_people p where p.active and p.role = 'member'), '[]'::jsonb),
       'pins', coalesce((select jsonb_agg(jsonb_build_object('id', x.id, 'lat', x.lat, 'lng', x.lng, 'place', x.place, 'era', x.era, 'memo', x.memo, 'name', p.name, 'pid', p.id) order by x.created_at)
                  from ys_pins x join ys_people p on p.id = x.person_id where p.active), '[]'::jsonb),
+      -- AI 인터뷰 진행 현황 (대답 수·정리 여부만, 내용은 보내지 않음)
+      'iv', coalesce((select jsonb_agg(jsonb_build_object('id', p.id, 'name', p.name,
+                 'answers', (select count(*) from jsonb_array_elements(coalesce(n.data->'msgs', '[]'::jsonb)) m where m->>'r' = 'me'),
+                 'sum', coalesce(n.data->>'summary', '') <> '', 'at', n.updated_at))
+                 from ys_notes n join ys_people p on p.id = n.person_id where n.kind = 'interview' and p.active), '[]'::jsonb),
       'now', now());
 
   else

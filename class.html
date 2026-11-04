@@ -201,6 +201,41 @@ button.chip:hover { background: color-mix(in srgb, var(--c) 14%, #fff); }
 #liveDot { width: 14px; height: 14px; border-radius: 50%; background: #bbb; flex: none; } #liveDot.on { background: #2BB673; box-shadow: 0 0 0 4px rgba(43,182,115,.2); } #liveDot.off { background: var(--berry); }
 #gate { position: fixed; inset: 0; z-index: 30; background: var(--paper); display: grid; place-items: center; text-align: center; padding: 24px; font-size: 18px; }
 #gate > div { display: grid; gap: 16px; max-width: 520px; } #gate h1 { font-size: 34px; } #gate a { color: #fff; background: var(--ink); padding: 14px 22px; border-radius: 12px; text-decoration: none; font-weight: 700; }
+
+.toc-s { display: flex; gap: 8px; padding: 4px 0 10px; border-bottom: 1px solid var(--line); margin-bottom: 6px; }
+.toc-s a { padding: 6px 12px; border-radius: 8px; border: 2px solid var(--line); color: var(--ink); text-decoration: none; font-weight: 700; }
+.toc-s a.cur { background: var(--ink); color: #fff; border-color: var(--ink); }
+.duo { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+.du { background: #fff; border-radius: 24px; padding: 28px 36px; border-top: 12px solid var(--leaf); }
+.du.bad { border-top-color: var(--berry); }
+.du h3 { font-family: var(--display); font-weight: 400; font-size: 44px; margin: 0 0 10px; }
+.du ul { margin: 0; padding-left: 1.1em; font-size: 34px; line-height: 1.65; }
+.du small { display: block; font-size: 24px; color: var(--sub); }
+.tfgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.tf { position: relative; border: 3px solid var(--line); background: #fff; border-radius: 22px; padding: 18px 22px; min-height: 168px; text-align: left; display: grid; align-content: space-between; gap: 10px; font: inherit; }
+.tf .q1 { font-size: 29px; line-height: 1.45; color: var(--ink); }
+.tf .a1 { font-family: var(--display); font-size: 36px; visibility: hidden; }
+.tf .a1 small { display: block; font-family: var(--body); font-size: 20px; color: var(--sub); }
+.tf.open .a1 { visibility: visible; }
+.tf.open[data-a="t"] { border-color: var(--leaf); background: #EEF7EE; } .tf.open[data-a="t"] .a1 { color: var(--leaf); }
+.tf.open[data-a="f"] { border-color: var(--berry); background: #FDEEF1; } .tf.open[data-a="f"] .a1 { color: var(--berry); }
+.pledge { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 14px; font-size: 40px; }
+.pledge li::before { content: "✔ "; color: var(--leaf); }
+.talk { background: #fff; border-radius: 24px; padding: 24px 28px; display: grid; gap: 12px; align-content: start; }
+.talk-h { margin: 0; font-family: var(--display); font-size: 32px; color: var(--sub); }
+.talk .b { margin: 0; padding: 14px 20px; border-radius: 18px; font-size: 27px; line-height: 1.5; max-width: 90%; }
+.talk .ai { background: #E6EEF6; justify-self: start; border-bottom-left-radius: 4px; }
+.talk .me { background: #FFF6D6; justify-self: end; border-bottom-right-radius: 4px; }
+.ivb { display: grid; gap: 8px; max-height: 470px; overflow: auto; }
+.ivr { display: grid; grid-template-columns: 170px 1fr 150px; gap: 14px; align-items: center; font-size: 26px; }
+.ivn { font-family: var(--display); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ivbar { height: 18px; background: #EEF1EA; border-radius: 99px; overflow: hidden; } .ivbar i { display: block; height: 100%; border-radius: 99px; }
+.ivc { color: var(--sub); font-variant-numeric: tabular-nums; } .ivc b { color: var(--leaf); font-weight: 700; }
+.three { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+.th { background: #fff; border-radius: 22px; padding: 24px 28px; display: grid; gap: 8px; border-top: 10px solid var(--sun); }
+.th b { font-family: var(--display); font-weight: 400; font-size: 42px; } .th span { font-size: 24px; color: var(--sub); }
+.th em { font-style: normal; font-family: var(--book); font-size: 30px; line-height: 1.45; }
+.r2msg { font-family: var(--book); font-size: 46px; line-height: 1.5; min-height: 210px; background: #fff; border-radius: 24px; padding: 28px 34px; }
 </style>
 
 </head>
@@ -435,6 +470,174 @@ button.chip:hover { background: color-mix(in srgb, var(--c) 14%, #fff); }
     <section class="slide cover" data-sec="마무리" data-time="21:00" data-note="수고하셨습니다.">
       <div class="kicker">1회차를 마칩니다</div>
       <h1>오늘 꺼낸 장소가<br><em>책의 첫 장</em>이 돼요</h1>
+      <p class="note">가곡동 상상창고 2층 마을공작소 · 문의 070-4148-3373</p>
+      <svg class="land" viewBox="0 0 1600 120" preserveAspectRatio="none" aria-hidden="true"><path d="M0 70 Q200 20 420 60 T860 50 T1300 40 T1600 60 V120 H0Z" fill="#9CCB8A"/><path d="M0 95 Q400 70 800 92 T1600 85 V120 H0Z" fill="#6FAE6A"/></svg>
+    </section>
+
+    <!-- ===================== 2회차 (11/4 수) ===================== -->
+    <section class="slide cover" data-sess="2" data-sec="대기" data-time="18:50" data-note="휴대폰 충전·앱 로그인 확인. 어제 못 온 분은 QR로 가입 → 바로 승인.">
+      <div class="kicker">AI를 활용한 가곡동 이야기 책 만들기</div>
+      <h1>2회차<br><em>AI와 함께 기억 꺼내기</em></h1>
+      <div class="datebar">11월 4일(수) 저녁 7시 ~ 9시</div>
+      <div class="row" style="gap:28px;align-items:center;justify-content:center">
+        <div class="qrbox" style="padding:16px;border-width:3px"><div id="qr2" style="width:170px;height:170px"></div></div>
+        <p class="note" style="text-align:left;margin:0">휴대폰으로 앱에 로그인해 두세요.<br>처음 오신 분은 QR을 찍어 가입해요.</p>
+      </div>
+      <div class="live-n" data-live="signup"></div>
+      <svg class="land" viewBox="0 0 1600 120" preserveAspectRatio="none" aria-hidden="true"><path d="M0 70 Q200 20 420 60 T860 50 T1300 40 T1600 60 V120 H0Z" fill="#9CCB8A"/><path d="M0 95 Q400 70 800 92 T1600 85 V120 H0Z" fill="#6FAE6A"/></svg>
+    </section>
+
+    <section class="slide" data-sess="2" data-sec="지난 시간" data-time="19:00" data-note="어제 남긴 장소를 함께 보며 인사. 같은 장소를 찍은 분이 있으면 짚어 주세요. 오늘 인터뷰는 이 장소 중 하나에서 출발해요. (8분)">
+      <span class="tag leaf">지난 시간 돌아보기</span>
+      <h2 style="font-size:56px">우리가 어제 꺼낸 장소들</h2>
+      <div class="join" style="grid-template-columns:1.25fr .75fr;gap:34px;align-items:start">
+        <div id="liveMap2" class="livemap" style="height:520px"></div>
+        <div style="display:grid;gap:18px"><div class="subs" data-live="pins"></div>
+          <p class="lead" style="font-size:30px">오늘은 이 장소 중 <span class="hl">한 곳</span>에서 출발해 AI와 이야기를 나눠요.</p></div>
+      </div>
+    </section>
+
+    <section class="slide" data-sess="2" data-sec="2회차 수업" data-time="19:08" data-note="오늘 집에 갈 때 남는 세 가지. 핵심은 '내 기억 하나를 끝까지 꺼내기'.">
+      <span class="tag berry">2회차 · 19:08</span>
+      <h2>오늘 집에 가실 때 남는 것</h2>
+      <ol class="goals">
+        <li><span>AI가 <span class="hl">잘하는 것과 못하는 것</span>을 안다<small>믿어도 되는 것과 꼭 확인할 것을 나눠요</small></span></li>
+        <li><span>AI 인터뷰로 <span class="hl">기억 하나를 끝까지</span> 꺼낸다<small>언제·어디·누구·무엇이 보이고 들렸는지</small></span></li>
+        <li><span>내 이야기의 <span class="hl">주제 · 독자 · 핵심 메시지</span>가 한 줄씩 있다<small>다음 시간 12쪽 구성표의 뼈대가 돼요</small></span></li>
+      </ol>
+    </section>
+
+    <section class="slide" data-sess="2" data-sec="생성형 AI" data-time="19:12" data-note="생성형 AI = 글을 아주 많이 읽고 '다음에 올 말'을 그럴듯하게 이어 붙이는 도구. 그래서 말은 잘하지만 내 기억은 모르고, 모르는 것도 아는 척할 수 있어요. (8분)">
+      <span class="tag river">생성형 AI, 한 장으로</span>
+      <h2 style="font-size:58px">아주 많이 읽은 <span class="hl">말동무</span>예요</h2>
+      <div class="duo">
+        <div class="du good"><h3>잘하는 것</h3><ul><li>질문을 이어서 던져 주기</li><li>길게 한 이야기를 짧게 정리하기</li><li>어색한 문장을 매끄럽게 다듬기</li><li>말로 설명한 장면을 그림으로 그리기</li></ul></div>
+        <div class="du bad"><h3>못하는 것</h3><ul><li>내 기억 — 나만 알아요</li><li>가곡동 옛 모습의 정확한 사실</li><li>모르는 것을 "모른다"고 말하기<small>그럴듯하게 지어낼 때가 있어요</small></li><li>그때 내 마음을 대신 느끼기</li></ul></div>
+      </div>
+    </section>
+
+    <section class="slide" data-sess="2" data-sec="체험 퀴즈" data-time="19:20" data-note="한 장씩 읽고 '진짜다 / 지어냈다' 손을 들게 한 뒤 카드를 눌러 정답 공개. 지어낸 문장들도 AI가 실제로 하는 말투처럼 자신 있게 써 있다는 점을 짚어 주세요. (12분)">
+      <span class="tag river">체험 퀴즈</span>
+      <h2 style="font-size:56px">진짜일까, AI가 지어냈을까?</h2>
+      <div class="tfgrid">
+        <button class="tf" data-a="t"><span class="q1">밀양아리랑은 경상남도 밀양에서 전해 오는 민요예요.</span><span class="a1">진짜</span></button>
+        <button class="tf" data-a="f"><span class="q1">가곡동 철길 옆 붕어빵 골목은 1983년 전국 붕어빵 대회에서 1등을 했어요.</span><span class="a1">지어냄<small>어제 본 샘플 책도 지어낸 이야기예요</small></span></button>
+        <button class="tf" data-a="t"><span class="q1">영남루는 밀양강 가에 있는 누각이에요.</span><span class="a1">진짜</span></button>
+        <button class="tf" data-a="f"><span class="q1">밀양강 철교는 1990년 시민 투표로 "무지개다리"라는 이름을 얻었어요.</span><span class="a1">지어냄<small>연도·이름까지 붙이면 더 그럴듯해 보여요</small></span></button>
+        <button class="tf" data-a="t"><span class="q1">밀양 얼음골은 한여름에 바위 틈에서 얼음이 어는 곳으로 알려져 있어요.</span><span class="a1">진짜</span></button>
+        <button class="tf" data-a="f"><span class="q1">밀양역 앞에서는 해마다 3월에 "붕어빵의 날" 축제가 열려요.</span><span class="a1">지어냄</span></button>
+      </div>
+      <div class="row"><button class="btn" id="tfAll">모두 공개</button><button class="btn" id="tfReset">다시 가리기</button></div>
+    </section>
+
+    <section class="slide titlecard" data-sess="2" data-sec="생성형 AI" data-time="19:32" data-note="오늘 수업의 약속 세 가지. 4회차에 사실관계 확인을 한 번 더 해요.">
+      <span class="tag river">우리의 약속</span>
+      <h1>기억은 내가,<br>정리는 AI가</h1>
+      <ul class="pledge">
+        <li>장소 · 연도 · 이름은 <b>내가 확인</b>해요</li>
+        <li>AI 말이 내 기억과 다르면, <b>내 기억이 맞아요</b></li>
+        <li>꺼내기 싫은 이야기는 <b>안 해도 돼요</b></li>
+      </ul>
+    </section>
+
+    <section class="slide" data-sess="2" data-sec="AI 인터뷰" data-time="19:35" data-note="짧은 대답과 구체적인 대답의 차이를 보여 주세요. 강사 휴대폰으로 실제 앱 화면을 한 번 시연해도 좋아요. (7분)">
+      <span class="tag leaf">AI 인터뷰 미리 보기</span>
+      <h2 style="font-size:56px">대답이 구체적일수록 이야기가 자라요</h2>
+      <div class="duo">
+        <div class="talk"><p class="talk-h">짧게 대답하면</p>
+          <p class="b ai">밀양역 앞 시장 이야기를 해 볼까요? 몇 살 때쯤이었나요?</p>
+          <p class="b me">어릴 때요.</p>
+          <p class="b ai">초등학생 때였나요, 더 어렸나요? 그때 계절도 기억나세요?</p></div>
+        <div class="talk"><p class="talk-h">구체적으로 대답하면</p>
+          <p class="b ai">밀양역 앞 시장 이야기를 해 볼까요? 몇 살 때쯤이었나요?</p>
+          <p class="b me">여덟 살 겨울이요. 엄마 손 잡고 붕어빵 사러 갔는데 김이 엄청 났어요.</p>
+          <p class="b ai">김이 나던 붕어빵, 생생하네요. 그때 엄마는 무슨 말을 했나요?</p></div>
+      </div>
+      <p class="lead" style="font-size:28px">요령 — 기억 하나만 · 보이고 들리고 냄새나던 것 · 사투리 그대로 · 마이크 버튼으로 말해도 돼요</p>
+    </section>
+
+    <section class="slide" data-sess="2" data-sec="AI 인터뷰" data-time="19:42" data-timer="20" data-note="앱 'AI 인터뷰' 탭 → (지도 장소를 골라) 인터뷰 시작하기. 대답 10번쯤이 목표. 아래 막대가 대답 수예요. 멈춘 분 옆에 가서 도와주세요. AI 동의 안 한 분은 앱에서 동의하기를 눌러야 해요.">
+      <span class="tag leaf">실습 · AI 인터뷰 20분</span>
+      <h2 style="font-size:56px">앱의 AI 인터뷰에서 기억 하나를 끝까지</h2>
+      <div class="join" style="grid-template-columns:.8fr 1.2fr;gap:36px;align-items:start">
+        <div style="display:grid;gap:18px">
+          <ol class="steps" style="gap:12px">
+            <li><span>앱 위 메뉴 <b>AI 인터뷰</b></span></li>
+            <li><span>이야기할 기억을 적거나 <b>지도 장소</b>를 눌러 <b>시작</b></span></li>
+            <li><span>질문에 하나씩 대답 <small>목표는 대답 10번</small></span></li>
+          </ol>
+          <div class="timer"><b>20:00</b><button data-t="go">시작</button><button class="ghost" data-t="reset">처음으로</button></div>
+        </div>
+        <div class="subs" data-live="iv"></div>
+      </div>
+    </section>
+
+    <section class="slide titlecard" data-sess="2" data-sec="쉬는 시간" data-time="20:05" data-timer="10" data-note="10분 휴식. 인터뷰를 계속하고 싶은 분은 이어서 해도 돼요.">
+      <span class="tag">쉬는 시간</span>
+      <h1>10분 쉬어 갈게요</h1>
+      <div class="timer"><b>10:00</b><button data-t="go">시작</button><button class="ghost" data-t="reset">처음으로</button></div>
+      <div class="time">인터뷰를 더 하고 싶으면 이어서 해도 좋아요</div>
+    </section>
+
+    <section class="slide" data-sess="2" data-sec="글감 정리" data-time="20:15" data-timer="10" data-note="'지금까지 이야기 정리하기'를 누르면 20초쯤 걸려요. 정리 글은 AI가 쓴 것이니 내 기억과 다른 곳은 꼭 고치게 해 주세요. ✓정리 표시로 진행 확인.">
+      <span class="tag leaf">글감 정리 · 10분</span>
+      <h2 style="font-size:56px">AI가 정리한 글감, 내 말로 고쳐요</h2>
+      <div class="join" style="grid-template-columns:.8fr 1.2fr;gap:36px;align-items:start">
+        <div style="display:grid;gap:18px">
+          <ol class="steps" style="gap:12px">
+            <li><span><b>지금까지 이야기 정리하기</b> 누르기</span></li>
+            <li><span>정리 글을 읽고 <b>틀린 곳 고치기</b><small>AI 말보다 내 기억이 맞아요</small></span></li>
+            <li><span>주제·독자·핵심 메시지 제안도 살펴보기</span></li>
+          </ol>
+          <div class="timer"><b>10:00</b><button data-t="go">시작</button><button class="ghost" data-t="reset">처음으로</button></div>
+        </div>
+        <div class="subs" data-live="iv"></div>
+      </div>
+    </section>
+
+    <section class="slide" data-sess="2" data-sec="내 이야기 세 줄" data-time="20:25" data-timer="10" data-note="예시로 감을 잡은 뒤 앱 '오늘 수업' 탭 → '내 이야기 세 줄'에 적게 해요. AI 제안을 그대로 쓰지 말고 내 말로 바꾸도록. 다음 시간 12쪽 구성표의 첫 칸이 돼요.">
+      <span class="tag berry">내 이야기 세 줄 · 10분</span>
+      <h2 style="font-size:56px">주제 · 독자 · 핵심 메시지</h2>
+      <div class="three">
+        <div class="th"><b>주제</b><span>무엇에 대한 이야기?</span><em>철길 옆 붕어빵 리어카에서 자란 겨울</em></div>
+        <div class="th"><b>독자</b><span>누가 읽으면 좋을까?</span><em>손주들, 새로 이사 온 이웃</em></div>
+        <div class="th"><b>핵심 메시지</b><span>마지막에 남길 한 문장</span><em>골목은 바뀌어도 그 겨울의 따뜻함은 남아 있다</em></div>
+      </div>
+      <div class="row" style="align-items:stretch;flex-wrap:nowrap"><div class="timer" style="padding:10px 18px"><b style="font-size:48px;min-width:140px">10:00</b><button data-t="go">시작</button><button class="ghost" data-t="reset">처음으로</button></div>
+        <div class="subs" data-act="s2_topic" style="flex:1;min-width:0"></div></div>
+    </section>
+
+    <section class="slide" data-sess="2" data-sec="함께 듣기" data-time="20:38" data-note="이름을 뽑으면 그분이 앱에 적은 핵심 메시지가 떠요. 본인이 직접 읽어 주시게 하고, 주제·독자도 짧게 덧붙이게. 서너 분. (12분)">
+      <span class="tag berry">함께 듣기</span>
+      <h2 style="font-size:56px">이 이야기는 이 한 문장으로 끝나요</h2>
+      <div class="roul" style="grid-template-columns:.9fr 1.1fr">
+        <div class="rname" id="r2Name" style="font-size:120px">?</div>
+        <div style="display:grid;gap:20px">
+          <div class="r2msg" id="r2Msg"></div>
+          <div class="row"><button class="btn main" id="r2Spin">이름 뽑기</button><button class="btn" id="r2Reset">처음으로</button></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-sess="2" data-sec="마무리" data-time="20:50" data-note="앱 '오늘 수업' 탭 → 오늘 한 줄 소감. 적는 대로 붙어요.">
+      <span class="tag">마무리</span>
+      <h2>오늘 한 줄 소감</h2>
+      <p class="lead" style="font-size:28px">앱 “오늘 수업” 탭 맨 아래 — AI와 이야기해 보니 어땠나요?</p>
+      <div class="wall" data-wall="s2_exit"></div>
+    </section>
+
+    <section class="slide" data-sess="2" data-sec="마무리" data-time="20:55" data-note="다음 시간까지 엿새. 인터뷰를 집에서 한 번 더 해 보면 구성표가 훨씬 쉬워져요.">
+      <span class="tag">마무리</span>
+      <h2>다음 주 화요일에 만나요</h2>
+      <div class="next">
+        <div class="nx"><h3>3회차 · 11월 10일(화) 저녁 7시</h3><ul><li>12쪽 구성표 짜기 (글 5 · 그림 5)</li><li>AI로 이야기 흐름 정리하기</li><li>글 1~2쪽 초고 쓰기</li></ul></div>
+        <div class="nx"><h3>집에서 해 오면 좋은 것</h3><ul><li>AI 인터뷰 한 번 더 — 다른 기억도 좋아요</li><li>글감 정리를 읽고 틀린 곳 고치기</li><li>그 시절 사진이 있으면 휴대폰으로 찍어 두기</li></ul></div>
+      </div>
+    </section>
+
+    <section class="slide cover" data-sess="2" data-sec="마무리" data-time="21:00" data-note="수고하셨습니다.">
+      <div class="kicker">2회차를 마칩니다</div>
+      <h1>꺼낸 기억이<br><em>이야기의 뼈대</em>가 돼요</h1>
       <p class="note">가곡동 상상창고 2층 마을공작소 · 문의 070-4148-3373</p>
       <svg class="land" viewBox="0 0 1600 120" preserveAspectRatio="none" aria-hidden="true"><path d="M0 70 Q200 20 420 60 T860 50 T1300 40 T1600 60 V120 H0Z" fill="#9CCB8A"/><path d="M0 95 Q400 70 800 92 T1600 85 V120 H0Z" fill="#6FAE6A"/></svg>
     </section>

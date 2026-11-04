@@ -1,8 +1,22 @@
-/* 수업 화면 — 1회차 슬라이드 + 앱 데이터 실시간 연동 (강사·운영자 전용) */
+/* 수업 화면 — 회차별 슬라이드(data-sess) + 앱 데이터 실시간 연동 (강사·운영자 전용). ?s=2 처럼 회차를 고르고, 없으면 오늘 날짜로 고름 */
 (() => {
   const $ = (s, el = document) => el.querySelector(s);
   const $$ = (s, el = document) => [...el.querySelectorAll(s)];
-  const slides = $$('.slide');
+  // ---- 회차 고르기 ----
+  const SESSIONS = window.CURRIC.story.sessions;
+  const SNO = (() => {
+    const q = +new URLSearchParams(location.search).get('s');
+    if (SESSIONS.some(x => x.no === q)) return q;
+    const t = new Date(); t.setHours(0, 0, 0, 0);
+    const d = x => { const m = /(\d+)월\s*(\d+)일/.exec(x.day || ''); return m ? new Date(2026, +m[1] - 1, +m[2]) : null; };
+    const has = n => document.querySelector(`.slide[data-sess="${n}"]`) || n === 1;
+    const today = SESSIONS.find(x => d(x) && +d(x) === +t && has(x.no));
+    const past = SESSIONS.filter(x => d(x) && d(x) <= t && has(x.no)).pop();
+    return (today || past || SESSIONS[0]).no;
+  })();
+  const all = $$('.slide');
+  all.forEach(s => { s.hidden = true; });
+  const slides = all.filter(s => (s.dataset.sess || '1') === String(SNO));
   const store = { get(k, d) { try { const v = localStorage.getItem('ysc_' + k); return v == null ? d : v; } catch { return d; } }, set(k, v) { try { localStorage.setItem('ysc_' + k, v); } catch { /* 저장 안 돼도 화면은 그대로 */ } } };
   let cur = 0;
 
@@ -38,7 +52,7 @@
 
   // ---- 목차 ----
   $('#bToc').onclick = () => {
-    $('#toc').innerHTML = slides.map((s, i) => `<li><button data-go="${i}" class="${i === cur ? 'cur' : ''}"><span class="tm">${s.dataset.time || ''}</span>${(s.querySelector('h1, h2') || {}).textContent || s.dataset.sec}</button></li>`).join('');
+    $('#toc').innerHTML = `<li class="toc-s">${SESSIONS.filter(x => x.no === 1 || document.querySelector(`.slide[data-sess="${x.no}"]`)).map(x => `<a href="?s=${x.no}" class="${x.no === SNO ? 'cur' : ''}">${x.no}회차</a>`).join('')}</li>` + slides.map((s, i) => `<li><button data-go="${i}" class="${i === cur ? 'cur' : ''}"><span class="tm">${s.dataset.time || ''}</span>${(s.querySelector('h1, h2') || {}).textContent || s.dataset.sec}</button></li>`).join('');
     $('#tocPanel').hidden = false;
   };
   $('#toc').onclick = e => { const b = e.target.closest('[data-go]'); if (b) { show(+b.dataset.go); $('#tocPanel').hidden = true; } };
@@ -51,7 +65,7 @@
     const teacher = store.get('teacher', ''), line = store.get('line', '');
     $$('[data-bind="teacher"]').forEach(el => { el.textContent = teacher || '강사 이름'; });
     $$('[data-bind="teacherLine"]').forEach(el => { el.textContent = line || '한 줄 소개를 ⚙ 설정에서 적어 주세요'; });
-    ['qr', 'qr0'].forEach(id => {
+    ['qr', 'qr0', 'qr2'].forEach(id => {
       const box = $('#' + id); box.innerHTML = '';
       if (url && window.QRCode) new QRCode(box, { text: url, width: 340, height: 340, correctLevel: QRCode.CorrectLevel.M });
       else box.innerHTML = '<p class="need">QR을 만들 수 없어요<br>(인터넷 연결 확인)</p>';
@@ -187,7 +201,7 @@
 
   // ===================== 앱 데이터 실시간 연동 (5초마다) =====================
   const C = window.BK_CONFIG, CUR = window.CURRIC;
-  const SESS = CUR.story.sessions.find(s => s.no === 1);
+  const SESS = CUR.story.sessions.find(s => s.no === SNO);
   const ACT = Object.fromEntries((SESS.acts || []).map(a => [a.id, a]));
   const TOKEN = (() => { try { return localStorage.getItem('ys_token') || sessionStorage.getItem('ys_token') || ''; } catch { return ''; } })();
   const hdr = () => { const h = { apikey: C.key, 'Content-Type': 'application/json' }; if (C.key.startsWith('eyJ')) h.Authorization = 'Bearer ' + C.key; return h; };
@@ -197,7 +211,8 @@
     const j = await r.json(); if (j && j.error) throw new Error(j.error); return j;
   }
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  let LIVE = { answers: [], members: [], pins: [] }, ME = null, lmap = null, llayer = null, fitted = false;
+  let LIVE = { answers: [], members: [], pins: [], iv: [] }, ME = null;
+  const MAPS = {}; // 지도 칸(.livemap)마다 { map, layer, fitted }
   const COLORS = ['#E04F6A', '#3E8DBA', '#2F7A45', '#EE7B30', '#8E5BC4', '#2BA39A', '#D9488A', '#2E5BB8', '#B8860B', '#5A6A80'];
   const colorOf = id => { let h = 0; for (const c of String(id)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return COLORS[h % COLORS.length]; };
   const ansOf = act => LIVE.answers.filter(a => a.act === act);
@@ -220,21 +235,25 @@
   });
 
   function initMap() {
-    const box = $('#liveMap'); if (!box || lmap || !window.L || box.offsetParent === null) return;
-    const M = Object.assign({ lat: 35.4755, lng: 128.77, zoom: 15 }, C.map || {});
-    lmap = L.map(box, { zoomControl: true, attributionControl: true }).setView([M.lat, M.lng], M.zoom);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(lmap);
-    llayer = L.layerGroup().addTo(lmap);
+    if (!window.L) return;
+    $$('.livemap').forEach(box => {
+      if (MAPS[box.id] || box.offsetParent === null) return;
+      const M = Object.assign({ lat: 35.4755, lng: 128.77, zoom: 15 }, C.map || {});
+      const map = L.map(box, { zoomControl: true, attributionControl: true }).setView([M.lat, M.lng], M.zoom);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map);
+      MAPS[box.id] = { map, layer: L.layerGroup().addTo(map), fitted: false };
+    });
     drawMap();
   }
   function drawMap() {
-    if (!lmap) return;
-    lmap.invalidateSize(); llayer.clearLayers();
-    LIVE.pins.forEach(p => L.circleMarker([p.lat, p.lng], { radius: 11, weight: 3, color: '#fff', fillColor: colorOf(p.pid), fillOpacity: .95 })
-      .bindTooltip(`${esc(p.place)} · ${esc(p.name)}`, { direction: 'top' }).addTo(llayer));
-    if (!fitted && LIVE.pins.length) { fitted = true; lmap.fitBounds(L.latLngBounds(LIVE.pins.map(p => [p.lat, p.lng])).pad(0.25), { maxZoom: 16 }); }
+    Object.values(MAPS).forEach(m => {
+      m.map.invalidateSize(); m.layer.clearLayers();
+      LIVE.pins.forEach(p => L.circleMarker([p.lat, p.lng], { radius: 11, weight: 3, color: '#fff', fillColor: colorOf(p.pid), fillOpacity: .95 })
+        .bindTooltip(`${esc(p.place)} · ${esc(p.name)}`, { direction: 'top' }).addTo(m.layer));
+      if (!m.fitted && LIVE.pins.length) { m.fitted = true; m.map.fitBounds(L.latLngBounds(LIVE.pins.map(p => [p.lat, p.lng])).pad(0.25), { maxZoom: 16 }); }
+    });
   }
-  window.__onShow = () => { setTimeout(() => { initMap(); if (lmap) drawMap(); }, 60); };
+  window.__onShow = () => { setTimeout(initMap, 60); };
 
   function render() {
     const ok = LIVE.members.filter(m => m.approved), wait = LIVE.members.filter(m => !m.approved);
@@ -254,12 +273,21 @@
     });
     const people = new Map(); LIVE.pins.forEach(p => people.set(p.pid, (people.get(p.pid) || { name: p.name, n: 0 })) && people.get(p.pid).n++);
     $$('[data-live=pins]').forEach(el => { el.innerHTML = `<p>지도에 남긴 장소 <b>${LIVE.pins.length}</b>곳 · <b>${people.size}</b>명</p><div class="chiprow">${[...people].map(([id, x]) => `<span class="chip" style="--c:${colorOf(id)}">${esc(x.name)} ${x.n}</span>`).join('')}</div>`; });
+    // AI 인터뷰 진행 현황 (대답 수·정리 여부만)
+    $$('[data-live=iv]').forEach(el => {
+      const by = new Map(LIVE.iv.map(x => [x.id, x]));
+      const started = ok.filter(m => by.get(m.id) && by.get(m.id).answers > 0).length, summed = ok.filter(m => by.get(m.id) && by.get(m.id).sum).length;
+      const noAi = ok.filter(m => !m.ai);
+      el.innerHTML = `<p>인터뷰 시작 <b>${started}</b>명 · 정리까지 <b>${summed}</b>명 / ${ok.length}명${noAi.length ? ` <small>AI 동의 안 한 분: ${noAi.map(m => esc(m.name)).join(', ')}</small>` : ''}</p>
+        <div class="ivb">${ok.map(m => { const x = by.get(m.id) || { answers: 0 }; const w = Math.min(100, x.answers * 10);
+          return `<div class="ivr"><span class="ivn">${esc(m.name)}</span><span class="ivbar"><i style="width:${w}%;background:${colorOf(m.id)}"></i></span><span class="ivc">${x.answers}번${x.sum ? ' <b>✓정리</b>' : ''}</span></div>`; }).join('')}</div>`;
+    });
     names = ok.map(m => m.name);
     drawMap();
   }
   let liveOk = false;
   async function poll() {
-    try { LIVE = await api('class_live', { acts: Object.keys(ACT) }); liveOk = true; render(); $('#liveDot').className = 'on'; $('#liveDot').title = '실시간 연결됨'; }
+    try { LIVE = Object.assign({ iv: [] }, await api('class_live', { acts: Object.keys(ACT) })); liveOk = true; render(); $('#liveDot').className = 'on'; $('#liveDot').title = '실시간 연결됨'; }
     catch (err) { $('#liveDot').className = 'off'; $('#liveDot').title = '연결 끊김: ' + err.message; }
   }
   (async () => {
@@ -269,6 +297,32 @@
     if (!ME || ME.role === 'member') { gate.hidden = false; $('#gateMsg').textContent = `${ME ? ME.name + '님은 참여자 계정이에요. ' : ''}수업 화면은 강사·운영자 계정으로만 열 수 있어요.`; return; }
     await poll(); setInterval(() => { if (!document.hidden) poll(); }, 5000);
   })();
+
+  // ---- 2회차: 진짜일까, 지어냈을까 ----
+  document.addEventListener('click', e => { const t = e.target.closest('.tf'); if (t) t.classList.toggle('open'); });
+  const tfAll = $('#tfAll'); if (tfAll) tfAll.onclick = () => $$('.tf').forEach(t => t.classList.add('open'));
+  const tfReset = $('#tfReset'); if (tfReset) tfReset.onclick = () => $$('.tf').forEach(t => t.classList.remove('open'));
+  // ---- 2회차: 핵심 메시지 들어 보기 (이름 뽑기) ----
+  let used2 = [];
+  const r2 = $('#r2Spin');
+  if (r2) {
+    r2.onclick = () => {
+      const pool = names.filter(n => !used2.includes(n));
+      if (!names.length) { $('#r2Msg').textContent = '앱에 가입·승인된 참여자가 아직 없어요.'; return; }
+      if (!pool.length) { $('#r2Msg').textContent = '모든 분이 발표했어요. "처음으로"를 누르면 다시 뽑아요.'; return; }
+      const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      let n = 0; const end = reduce ? 0 : 16; r2.disabled = true;
+      const step = () => {
+        const pick = pool[Math.floor(Math.random() * pool.length)]; $('#r2Name').textContent = pick;
+        if (n++ < end) { setTimeout(step, 60 + n * 12); return; }
+        used2.push(pick); r2.disabled = false;
+        const a = LIVE.answers.find(x => x.act === 's2_topic' && x.name === pick);
+        $('#r2Msg').innerHTML = a && a.data.message ? `“${esc(a.data.message)}”` : '<span class="muted">아직 앱에 적지 않았어요 — 말로 들려주세요</span>';
+      };
+      step();
+    };
+    $('#r2Reset').onclick = () => { used2 = []; $('#r2Name').textContent = '?'; $('#r2Msg').textContent = ''; };
+  }
 
   applySettings();
   const h = /^#s(\d+)$/.exec(location.hash);
