@@ -67,7 +67,8 @@
     $$('[data-bind="teacherLine"]').forEach(el => { el.textContent = line || '한 줄 소개를 ⚙ 설정에서 적어 주세요'; });
     ['qr', 'qr0', 'qr2'].forEach(id => {
       const box = $('#' + id); box.innerHTML = '';
-      if (url && window.QRCode) new QRCode(box, { text: url, width: 340, height: 340, correctLevel: QRCode.CorrectLevel.M });
+      const sz = Math.round(parseFloat(box.style.width) || 340);
+      if (url && window.QRCode) new QRCode(box, { text: url, width: sz, height: sz, correctLevel: QRCode.CorrectLevel.M });
       else box.innerHTML = '<p class="need">QR을 만들 수 없어요<br>(인터넷 연결 확인)</p>';
     });
     $('#urlText').textContent = url ? url.replace(/^https?:\/\//, '') : '';
@@ -269,7 +270,7 @@
     });
     $$('[data-wall]').forEach(el => {
       const list = ansOf(el.dataset.wall);
-      el.innerHTML = list.length ? list.map(a => `<button class="note" style="--c:${colorOf(a.id)}" data-ans="${a.act}|${a.id}"><span>${esc(summary(a))}</span><b>${esc(a.name)}</b></button>`).join('') : '<p class="muted">앱 “오늘 수업” 탭에서 적으면 여기에 바로 붙어요.</p>';
+      el.innerHTML = list.length ? list.map(a => `<button class="wnote" style="--c:${colorOf(a.id)}" data-ans="${a.act}|${a.id}"><span>${esc(summary(a))}</span><b>${esc(a.name)}</b></button>`).join('') : '<p class="muted">앱 “오늘 수업” 탭에서 적으면 여기에 바로 붙어요.</p>';
     });
     const people = new Map(); LIVE.pins.forEach(p => people.set(p.pid, (people.get(p.pid) || { name: p.name, n: 0 })) && people.get(p.pid).n++);
     $$('[data-live=pins]').forEach(el => { el.innerHTML = `<p>지도에 남긴 장소 <b>${LIVE.pins.length}</b>곳 · <b>${people.size}</b>명</p><div class="chiprow">${[...people].map(([id, x]) => `<span class="chip" style="--c:${colorOf(id)}">${esc(x.name)} ${x.n}</span>`).join('')}</div>`; });
