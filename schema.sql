@@ -562,7 +562,7 @@ begin
   when 'album_add' then
     if coalesce(d->>'src', '') <> '' then
       select * into ph from ys_photos where id = (d->>'src')::uuid;
-      if not found then return jsonb_build_object('error', '그 사진은 지워졌어요.'); end if;
+      if not found then return jsonb_build_object('error', '이 사진은 지워졌어요.'); end if;
       if not staff and ph.track <> 'all' and not (ph.track = any(me.tracks)) then return jsonb_build_object('error', '참여한 과정의 사진만 담을 수 있어요.'); end if;
       select id into v_aid from ys_album where person_id = v_owner and src_photo = ph.id limit 1;
       if v_aid is null then
@@ -595,8 +595,8 @@ begin
     if exists (select 1 from ys_people x where x.id = v_owner and x.role = 'member'
                 and coalesce((x.consent->>'ai')::boolean, false) = false) then
       return jsonb_build_object('error', case when v_owner = me.id
-        then 'AI 교정을 쓰려면 먼저 동의가 필요해요.'
-        else '이 분은 AI 교정에 동의하지 않았어요. 동의를 받은 뒤에 써 주세요.' end);
+        then 'AI 기능을 쓰려면 먼저 동의가 필요해요.'
+        else '이 분은 AI 기능에 동의하지 않았어요. 동의를 받은 뒤에 써 주세요.' end);
     end if;
     if not staff and coalesce((select n from ys_proof where person_id = me.id
                                 and day = (now() at time zone 'Asia/Seoul')::date), 0) >= 20 then
@@ -627,7 +627,7 @@ begin
     if v_n <= 0 then
       return jsonb_build_object('error', case when d->>'kind' = 'image'
         then '오늘 AI 그림은 다 만들었어요 (하루 10장). 내일 다시 해 주세요.'
-        else '오늘 AI 인터뷰를 많이 했어요. 내일 이어서 해 주세요.' end, 'left', 0);
+        else '오늘 AI 인터뷰 횟수를 다 썼어요 (하루 80번). 내일 이어서 해 주세요.' end, 'left', 0);
     end if;
     return jsonb_build_object('ok', true, 'left', v_n);
 

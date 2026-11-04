@@ -70,7 +70,7 @@ module.exports = async function handler(req, res) {
     out = JSON.parse(raw.slice(a, b + 1));
   } catch (e) {
     console.error('proof error', e && e.message);
-    res.status(502).json({ error: 'AI 교정이 잠깐 안 돼요. 조금 뒤 다시 눌러 주세요.' }); return;
+    res.status(502).json({ error: 'AI 교정을 하지 못했어요. 조금 뒤 다시 눌러 주세요.' }); return;
   }
 
   // 3) 원문에 실제로 있는 것만 돌려줌

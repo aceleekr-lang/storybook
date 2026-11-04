@@ -48,17 +48,17 @@ module.exports = async function handler(req, res) {
       const msg = (j && j.error && j.error.message) || `status ${r.status}`;
       console.error('image error', r.status, code, msg);
       if (/moderation|safety|content_policy/i.test(code + msg)) {
-        res.status(400).json({ error: '이 설명으로는 그림을 만들 수 없다고 해요. 표현을 조금 바꿔서 다시 해 주세요.' }); return;
+        res.status(400).json({ error: '이 설명으로는 그림을 만들 수 없어요. 표현을 조금 바꿔서 다시 해 주세요.' }); return;
       }
       if (r.status === 401) { res.status(500).json({ error: 'AI 그림 키(OPENAI_API_KEY)가 맞지 않아요. 운영자에게 알려 주세요.' }); return; }
-      if (r.status === 429) { res.status(503).json({ error: 'AI 그림 서버가 바빠요(또는 충전 금액이 부족해요). 잠시 뒤 다시 해 주세요.' }); return; }
+      if (r.status === 429) { res.status(503).json({ error: 'AI 그림 서버가 바쁘거나 이용 금액이 부족해요. 잠시 뒤 다시 해 보고, 계속 안 되면 운영자에게 알려 주세요.' }); return; }
       throw new Error(msg);
     }
     b64 = j && j.data && j.data[0] && j.data[0].b64_json;
     if (!b64) throw new Error('빈 응답');
   } catch (e) {
     console.error('image error', e && e.message);
-    res.status(502).json({ error: 'AI 그림이 잠깐 안 돼요. 조금 뒤 다시 눌러 주세요.' }); return;
+    res.status(502).json({ error: 'AI 그림을 만들지 못했어요. 조금 뒤 다시 눌러 주세요.' }); return;
   }
 
   // 3) 성공했을 때만 1장 셈

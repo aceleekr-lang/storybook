@@ -705,3 +705,6 @@ td.t-title { max-width: 16em; overflow: hidden; text-overflow: ellipsis; }
 .chip-r { display: inline-flex; align-items: center; gap: .35rem; border: 2px solid var(--line); border-radius: 999px; padding: .4rem .9rem; min-height: 44px; background: #fff; font-weight: 400; cursor: pointer; }
 .chip-r:has(input:checked) { border-color: var(--story); background: #E6EEF6; font-weight: 700; }
 .act .h2 { margin: 0; }
+.fitline { margin: 0; font-size: .92rem; color: var(--sub); }
+.fitline.ok { color: var(--town); font-weight: 700; }
+.fitline.over { color: #8a5a00; font-weight: 600; }

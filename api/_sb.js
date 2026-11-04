@@ -36,7 +36,13 @@ async function claude({ system, messages, max_tokens = 1500 }) {
   });
   const j = await r.json();
   if (!r.ok) throw new Error((j && j.error && j.error.message) || `status ${r.status}`);
-  return (j.content || []).filter(c => c.type === 'text').map(c => c.text).join('').trim();
+  let text = (j.content || []).filter(c => c.type === 'text').map(c => c.text).join('').trim();
+  // 길이 제한에 걸려 문장 중간에서 끊겼으면 마지막으로 끝난 문장까지만 남김
+  if (j.stop_reason === 'max_tokens') {
+    const m = text.match(/^[\s\S]*[.?!。？！](?=\s|$)|^[\s\S]*(?:요|다|까)[.?!]?(?=\s|$)/);
+    if (m && m[0].length > text.length * 0.4) text = m[0].trim();
+  }
+  return text;
 }
 
 const parseJSON = raw => { const a = raw.indexOf('{'), b = raw.lastIndexOf('}'); return JSON.parse(raw.slice(a, b + 1)); };

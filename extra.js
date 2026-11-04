@@ -49,7 +49,7 @@
       const d = modal(`<h2>AI로 그림 만들기</h2>
         <p class="muted">누가 · 어디서 · 무엇을 하는지, 계절·시간·분위기를 적으면 더 잘 그려요. 그림 안에 글자는 넣지 않아요.</p>
         <label class="f">장면 설명<textarea id="gP" rows="4" maxlength="1200" placeholder="예) 1980년대 겨울 아침, 밀양역 앞 골목에서 엄마 손을 잡고 걸어가는 여덟 살 아이. 입김이 하얗게 나오고 붕어빵 가게에서 김이 오른다.">${esc(scene)}</textarea></label>
-        ${text || hint ? '<p class="tip"><button class="linkbtn" id="gFrom" type="button">이 쪽의 질문·글을 가져와서 고치기</button></p>' : ''}
+        ${text || hint ? '<p class="tip"><button class="linkbtn" id="gFrom" type="button">이 쪽의 질문과 글 불러오기</button></p>' : ''}
         <label class="f">그림체<select id="gS">${opts.map(o => `<option value="${esc(o.v)}">${esc(o.name)}</option>`).join('')}</select></label>
         <div class="f"><span>모양 ${frame ? '<small>그림 칸에 맞춰 골라 뒀어요</small>' : ''}</span><div class="seg-btns" id="gA">
           ${[['portrait', '세로'], ['landscape', '가로'], ['square', '정사각']].map(([k, l]) => `<button type="button" data-asp="${k}" aria-pressed="${asp === k}">${l}</button>`).join('')}</div></div>
@@ -103,7 +103,7 @@
     { k: '글 2', tpl: 'text', ph: '무슨 일이 일어나나요?' }, { k: '그림 2', tpl: 'fullSafe', pic: true, ph: '글 2 옆에 그릴 장면' },
     { k: '글 3', tpl: 'text', ph: '가장 생생한 장면' }, { k: '그림 3', tpl: 'fullSafe', pic: true, ph: '글 3 옆에 그릴 장면' },
     { k: '글 4', tpl: 'text', ph: '달라지는 것, 그때의 마음' }, { k: '그림 4', tpl: 'fullSafe', pic: true, ph: '글 4 옆에 그릴 장면' },
-    { k: '글 5', tpl: 'text', ph: '마지막 장면 — 핵심 메시지로 닫기' }, { k: '그림 5', tpl: 'fullSafe', pic: true, ph: '글 5 옆에 그릴 장면' },
+    { k: '글 5', tpl: 'text', ph: '마지막 장면 — 핵심 메시지로 마무리' }, { k: '그림 5', tpl: 'fullSafe', pic: true, ph: '글 5 옆에 그릴 장면' },
     { k: '지은이 소개', tpl: 'imgSmall', ph: '나와 가곡동의 인연, 내 사진이나 그림' }
   ];
   async function openPlan({ owner = '', title = '' } = {}) {
@@ -127,7 +127,7 @@
           <label class="f">핵심 메시지<input data-k="message" value="${esc(P.message)}" placeholder="예) 골목은 바뀌어도 사람의 정은 남는다"></label>
           <label class="f">작품 제목 <small>"내 책 쓰기" 맨 위 작품 제목 칸에도 적어 주세요</small><input data-k="title" value="${esc(P.title)}"></label>
         </div>
-        <p class="row"><button class="btn btn-ai" id="plAi" type="button">AI에게 흐름 제안받기</button><small class="muted">위 칸과 AI 인터뷰 정리를 보고 빈 장면을 채워 줘요. 채운 뒤 마음대로 고치세요.</small></p>
+        <p class="row"><button class="btn btn-ai" id="plAi" type="button">AI에게 흐름 제안받기</button><small class="muted">위 칸과 AI 인터뷰 정리를 바탕으로 빈 장면 칸을 채워 드려요. 채운 뒤에는 자유롭게 고치세요.</small></p>
         <ol class="plan-rows">${ROLES.map((r, i) => `<li class="pr ${r.pic ? 'pr-pic' : r.k === '제목면' || r.k === '지은이 소개' ? 'pr-end' : 'pr-txt'}"><span class="pr-n">${i + 1}쪽 · ${esc(r.k)}</span>
           <textarea data-row="${i}" rows="2" placeholder="${esc(r.ph)}">${esc(P.rows[i])}</textarea></li>`).join('')}</ol>
         <p class="err" id="plErr" role="alert"></p>
@@ -149,7 +149,7 @@
           put(0, r.cover);
           (r.scenes || []).forEach((s, j) => { put(1 + j * 2, s.text); put(2 + j * 2, s.pic); });
           if (r.title && !P.title.trim()) { P.title = r.title; $('[data-k="title"]', d).value = r.title; }
-          later(); toast('흐름을 채웠어요. 내 이야기에 맞게 고쳐 주세요.');
+          later(); toast('장면 칸을 채웠어요. 내 이야기에 맞게 고쳐 주세요.');
         } catch (err) { $('#plErr', d).textContent = err.message; }
         finally { b.disabled = false; b.textContent = 'AI에게 흐름 제안받기'; }
       };
@@ -169,7 +169,7 @@
   // ---------- AI 인터뷰 ----------
   VIEWS.interview = async (v, arg) => {
     const [nt, pr] = await Promise.all([api('note_get', { kind: 'interview' }), api('pins').catch(() => ({ pins: [] }))]);
-    const D = Object.assign({ msgs: [], summary: '', topic: '', reader: '', message: '', missing: '' }, nt.data);
+    const D = Object.assign({ msgs: [], summary: '', topic: '', reader: '', message: '', missing: '', done: false, essayTitle: '', essay: '' }, nt.data);
     const myPins = pr.pins.filter(p => p.mine);
     let seed = arg.seed || '', sending = false, saveT = null;
     const save = () => { clearTimeout(saveT); saveT = null; return saveNote('interview', D).catch(err => toast('저장하지 못했어요: ' + err.message, true)); };
@@ -179,7 +179,7 @@
     const bubble = m => `<div class="bub ${m.r === 'ai' ? 'b-ai' : 'b-me'}"><p>${esc(m.t).replace(/\n/g, '<br>')}</p></div>`;
     const draw = () => {
       v.innerHTML = `<h1 class="h">AI 인터뷰</h1>
-        <p class="lead">AI가 하나씩 질문하고, 내가 대답하면서 기억을 꺼내요. 충분히 이야기했으면 "정리하기"를 눌러 글감으로 모아요. 대화는 저절로 저장돼요.</p>
+        <p class="lead">AI가 하나씩 질문하고, 내가 대답하면서 기억을 꺼내요. 충분히 이야기했으면 <b>인터뷰 마치기</b>를 눌러 주세요. 이야기를 정리해 주고, 원하면 짧은 수필로도 써 줘요. 대화는 자동으로 저장돼요.</p>
         ${aiOk() ? '' : '<div class="banner">AI 인터뷰를 쓰려면 AI 기능 동의가 필요해요. <button class="btn btn-small" id="iAgree">동의하기</button></div>'}
         ${!D.msgs.length ? `<section class="card iv-start">
             <label class="f">어떤 기억을 이야기해 볼까요? <small>비워 두면 AI가 처음부터 물어봐요</small>
@@ -187,18 +187,43 @@
             ${myPins.length ? `<p class="muted small">이야기 지도에 남긴 내 장소에서 고르기</p><div class="chips">${myPins.map(p => `<button class="chip-b" data-seed="${esc([p.place, p.era, p.memo].filter(Boolean).join(' · '))}">${esc(p.place)}</button>`).join('')}</div>` : ''}
             <button class="btn btn-main btn-wide" id="iStart">인터뷰 시작하기</button></section>`
         : `<section class="chat" id="chat">${D.msgs.map(bubble).join('')}</section>
-          <form class="send" id="iForm"><label class="sr" for="iMsg">대답</label>
-            <textarea id="iMsg" rows="3" placeholder="생각나는 대로 편하게 적어 주세요. 휴대폰 키보드의 마이크 버튼으로 말해도 돼요."></textarea>
+          ${D.done ? `<div class="banner ok">인터뷰를 마쳤어요. 대답 ${answers()}번, 고마워요! <button class="btn btn-small" id="iMore">이어서 더 이야기하기</button></div>`
+          : `<form class="send" id="iForm"><label class="sr" for="iMsg">대답</label>
+            <textarea id="iMsg" rows="3" placeholder="생각나는 대로 편하게 적어 주세요. 휴대폰 키보드의 마이크 버튼을 누르고 말로 해도 돼요."></textarea>
             <button class="btn btn-main" id="iSend">보내기</button></form>
-          <div class="row"><button class="btn btn-ai" id="iSum" ${answers() ? '' : 'disabled'}>지금까지 이야기 정리하기</button><button class="btn btn-ghost btn-small" id="iReset">처음부터 다시</button></div>`}
-        ${D.summary ? `<section class="card iv-sum"><h2 class="h2">글감 정리 <small>고쳐도 돼요</small></h2>
+          ${answers() >= 8 ? '<p class="tip">이야기를 충분히 들려주셨어요. 더 하고 싶은 이야기가 없으면 인터뷰를 마쳐도 좋아요.</p>' : ''}
+          <div class="row"><button class="btn btn-ai" id="iSum" ${answers() ? '' : 'disabled'}>인터뷰 마치기</button><button class="btn btn-ghost btn-small" id="iReset">처음부터 다시</button></div>`}`}
+        ${D.summary ? `<section class="card iv-sum"><h2 class="h2">인터뷰 정리 <small>AI가 정리했어요. 내 기억과 다른 곳은 고쳐 주세요</small></h2>
             <label class="f">정리<textarea id="sSummary" rows="8">${esc(D.summary)}</textarea></label>
             <label class="f">주제<input id="sTopic" value="${esc(D.topic)}"></label>
             <label class="f">독자<input id="sReader" value="${esc(D.reader)}"></label>
             <label class="f">핵심 메시지<input id="sMessage" value="${esc(D.message)}"></label>
             ${D.missing ? `<p class="tip"><b>더 떠올려 보면 좋을 것</b> ${esc(D.missing)}</p>` : ''}
-            <div class="row"><button class="btn btn-main" id="iToBook">내 책에 새 쪽으로 넣기</button><button class="btn" id="iToPlan">12쪽 구성표에 주제 옮기기</button></div></section>` : ''}`;
+            <div class="row" style="flex-wrap:wrap"><button class="btn" id="iToBook">정리를 내 책에 새 쪽으로 넣기</button><button class="btn" id="iToPlan">12쪽 구성표에 주제 옮기기</button>${D.done ? '<button class="btn btn-ai" id="iReSum">다시 정리하기</button>' : ''}</div></section>
+          <section class="card iv-essay"><h2 class="h2">짧은 수필 <small>인터뷰에서 들려준 이야기로 써요</small></h2>
+            ${D.essay ? `<label class="f">제목<input id="eTitle" value="${esc(D.essayTitle)}" maxlength="60"></label>
+              <label class="f">본문 <small>직접 고칠 수 있어요. 고친 내용은 자동으로 저장돼요</small><textarea id="eBody" rows="14">${esc(D.essay)}</textarea></label>
+              <p class="fitline" id="eFit">책 한 쪽에 들어가는지 확인하는 중…</p>
+              <div class="row" style="flex-wrap:wrap"><button class="btn btn-main" id="iEssayBook">수필을 내 책에 넣기</button><button class="btn btn-ai" id="iFit" hidden>한 쪽에 맞게 줄이기</button><button class="btn btn-ai" id="iEssay">다시 쓰기</button></div>`
+            : `<p class="muted">AI가 인터뷰 내용으로 책 한 쪽 분량(600자 안팎)의 수필과 제목을 써 줘요. 없는 사실은 지어내지 않고, 내 말투를 살려요. 다 쓴 뒤에는 제목과 본문을 직접 고칠 수 있어요.</p>
+              <button class="btn btn-ai" id="iEssay" ${answers() >= 2 ? '' : 'disabled'}>이 이야기로 짧은 수필 쓰기</button>`}</section>` : ''}`;
       const ch = $('#chat', v); if (ch) ch.scrollTop = ch.scrollHeight;
+      checkFit();
+    };
+    // 수필이 책 한 쪽(글만 틀)에 들어가는지 실제 조판으로 확인
+    let fitT = null, fitMax = 0;
+    const checkFit = () => {
+      clearTimeout(fitT);
+      fitT = setTimeout(async () => {
+        const el = $('#eFit', v), btn = $('#iFit', v); if (!el || !window.Book) return;
+        const text = D.essay || '';
+        try {
+          const n = await Book.fitLength({ tpl: 'text', head: D.essayTitle, text, imgs: [] }, myTrack());
+          const len = text.replace(/\s/g, '').length;
+          if (n >= text.length) { el.className = 'fitline ok'; el.textContent = `✓ 책 한 쪽에 들어가요 (${len}자)`; btn.hidden = true; }
+          else { const over = text.slice(n).replace(/\s/g, '').length; fitMax = n; el.className = 'fitline over'; el.textContent = `책 한 쪽보다 약 ${over}자 길어요. 직접 줄이거나 "한 쪽에 맞게 줄이기"를 눌러 주세요. 그대로 넣으면 다음 쪽으로 이어져요.`; btn.hidden = false; }
+        } catch { el.textContent = ''; }
+      }, 500);
     };
     draw();
     const ask1 = async () => {
@@ -213,8 +238,8 @@
       finally { sending = false; draw(); const ta = $('#iMsg', v); if (ta) ta.focus(); }
     };
     v.oninput = e => {
-      const map = { sSummary: 'summary', sTopic: 'topic', sReader: 'reader', sMessage: 'message' };
-      if (map[e.target.id]) { D[map[e.target.id]] = e.target.value; later(); }
+      const map = { sSummary: 'summary', sTopic: 'topic', sReader: 'reader', sMessage: 'message', eTitle: 'essayTitle', eBody: 'essay' };
+      if (map[e.target.id]) { D[map[e.target.id]] = e.target.value; later(); if (e.target.id === 'eBody' || e.target.id === 'eTitle') checkFit(); }
       if (e.target.id === 'iSeed') seed = e.target.value;
     };
     v.onsubmit = async e => {
@@ -234,15 +259,50 @@
         if (!(await ask('인터뷰를 처음부터 다시 할까요?', '지금까지 나눈 대화가 지워져요. 아래 글감 정리는 남아요.', '다시 하기'))) return;
         D.msgs = []; D.seed = ''; seed = ''; await save(); draw(); return;
       }
-      const sm = e.target.closest('#iSum');
+      if (e.target.closest('#iMore')) { D.done = false; await save(); draw(); const ta = $('#iMsg', v); if (ta) ta.focus(); return; }
+      const sm = e.target.closest('#iSum, #iReSum');
       if (sm) {
         if (!aiOk() && !(await askAi())) return;
-        if (D.summary && !(await ask('글감 정리를 새로 할까요?', '지금 정리 칸에 고친 내용은 새 정리로 바뀌어요.', '새로 정리하기'))) return;
+        const again = sm.id === 'iReSum' || !!D.summary;
+        if (sm.id === 'iSum' && !(await ask('인터뷰를 마칠까요?', '지금까지 나눈 이야기를 AI가 정리해 드려요. 나중에 "이어서 더 이야기하기"로 다시 열 수 있어요.', '마치고 정리하기'))) return;
+        if (again && !(await ask('정리를 새로 할까요?', '정리 칸에 직접 고친 내용은 새 정리로 덮어써져요.', '새로 정리하기'))) { if (sm.id === 'iSum') { D.done = true; await save(); draw(); } return; }
         await busy(sm, '정리하는 중… (20초쯤)', async () => {
           const r = await askAI({ mode: 'sum', msgs: D.msgs });
-          Object.assign(D, { summary: r.summary, topic: r.topic, reader: r.reader, message: r.message, missing: r.missing });
+          Object.assign(D, { summary: r.summary, topic: r.topic, reader: r.reader, message: r.message, missing: r.missing, done: true });
           await save(); draw(); toast('정리했어요. 아래에서 확인하고 고쳐 주세요.');
           const s = $('.iv-sum', v); if (s) s.scrollIntoView({ behavior: 'smooth' });
+        });
+        return;
+      }
+      const es = e.target.closest('#iEssay');
+      if (es) {
+        if (!aiOk() && !(await askAi())) return;
+        if (D.essay && !(await ask('수필을 새로 쓸까요?', '지금 수필 칸에 고친 내용은 새 글로 덮어써져요.', '새로 쓰기'))) return;
+        await busy(es, '수필을 쓰는 중… (30초쯤)', async () => {
+          await save();
+          const r = await askAI({ mode: 'essay', msgs: D.msgs, topic: D.topic, message: D.message });
+          Object.assign(D, { essayTitle: r.title, essay: r.essay });
+          await save(); draw(); toast('수필을 썼어요. 읽어 보고 내 말투에 맞게 고쳐 주세요.');
+          const s = $('.iv-essay', v); if (s) s.scrollIntoView({ behavior: 'smooth' });
+        });
+        return;
+      }
+      const fb = e.target.closest('#iFit');
+      if (fb) {
+        if (!aiOk() && !(await askAi())) return;
+        await busy(fb, '줄이는 중… (20초쯤)', async () => {
+          await save();
+          const r = await askAI({ mode: 'fit', essay: D.essay, max: Math.max(300, fitMax - 30) });
+          D.essay = r.essay; await save(); draw(); toast('한 쪽에 맞게 줄였어요. 빠진 문장이 아쉬우면 직접 고쳐 주세요.');
+        });
+        return;
+      }
+      const eb = e.target.closest('#iEssayBook');
+      if (eb) {
+        await busy(eb, '넣는 중…', async () => {
+          await save();
+          const n = await appendPage({ tpl: 'text', head: D.essayTitle, text: D.essay, hint: 'AI 인터뷰로 쓴 수필 — 글이 칸을 넘치면 "넘친 글 다음 쪽으로 옮기기"를 눌러 주세요.' });
+          toast(`내 책 ${n}번째 쪽에 넣었어요. "내 책 쓰기"에서 다듬어 주세요.`);
         });
         return;
       }
@@ -297,7 +357,7 @@
     };
     const reload = async () => { pins = (await api('pins')).pins; drawMarks(); drawList(); };
     const form = (p = {}) => `<label class="f">장소 이름<input id="pPlace" maxlength="60" value="${esc(p.place || '')}" placeholder="예) 밀양역 앞 시장, 가곡초등학교 운동장"></label>
-        <label class="f">언제 <small>대충이어도 돼요</small><input id="pEra" maxlength="40" value="${esc(p.era || '')}" placeholder="예) 1980년대, 초등학생 때, 결혼한 해"></label>
+        <label class="f">언제 <small>대략이어도 괜찮아요</small><input id="pEra" maxlength="40" value="${esc(p.era || '')}" placeholder="예) 1980년대, 초등학생 때, 결혼한 해"></label>
         <label class="f">어떤 기억이 있나요?<textarea id="pMemo" rows="4" maxlength="600" placeholder="그곳에서 본 것, 들은 것, 만난 사람…">${esc(p.memo || '')}</textarea></label>
         <p class="err" id="pErr" role="alert"></p>`;
     const addDialog = ll => {
@@ -315,7 +375,7 @@
       const d = modal(`<h2>${esc(p.place)}</h2><p class="muted">${esc(p.name)}${p.era ? ` · ${esc(p.era)}` : ''}</p>
         ${p.memo ? `<p class="pin-big">${esc(p.memo).replace(/\n/g, '<br>')}</p>` : ''}
         <div class="stack">
-          ${p.mine ? '<button class="btn btn-ai" id="pIv">이 기억으로 AI 인터뷰 하기</button><button class="btn" id="pBook">내 책에 이 기억으로 쪽 만들기</button>' : ''}
+          ${p.mine ? '<button class="btn btn-ai" id="pIv">이 기억으로 AI 인터뷰하기</button><button class="btn" id="pBook">이 기억으로 내 책에 쪽 만들기</button>' : ''}
           ${can ? '<button class="btn" id="pEdit">고치기</button><button class="btn btn-ghost btn-danger" id="pDel">지우기</button>' : ''}
           <button class="btn btn-ghost" data-close>닫기</button></div>`, 'm-pin');
       const on = (id, fn) => { const b = $(id, d); if (b) b.onclick = fn; };
@@ -325,7 +385,7 @@
         catch (err) { toast(err.message, true); }
       });
       on('#pDel', async () => {
-        if (!(await ask(`"${p.place}"를 지도에서 지울까요?`, '', '지우기'))) return;
+        if (!(await ask(`"${p.place}" 장소를 지도에서 지울까요?`, '', '지우기'))) return;
         try { await api('pin_del', { pid: p.id }); d.close(); await reload(); } catch (err) { toast(err.message, true); }
       });
       on('#pEdit', () => {
@@ -373,7 +433,7 @@
     const draw = () => {
       const max = Math.max(1, ...st.styles.map(s => s.votes));
       v.innerHTML = `<h1 class="h">그림체</h1>
-        <p class="lead">우리 책의 그림을 한 가지 그림체로 맞추면 한 권의 책처럼 보여요. 마음에 드는 그림체에 투표해 주세요. 선생님이 정하면 AI 그림을 만들 때 그 그림체가 저절로 들어가요.</p>
+        <p class="lead">우리 책의 그림을 한 가지 그림체로 맞추면 한 권의 책처럼 보여요. 마음에 드는 그림체에 투표해 주세요. 선생님이 정하면 AI 그림을 만들 때 그 그림체가 자동으로 적용돼요.</p>
         ${st.picked ? `<div class="banner ok">정해진 공동 그림체: <b>${esc(st.picked.name)}</b></div>` : `<p class="muted">아직 정하지 않았어요 · 지금까지 ${st.voters}명이 투표했어요.</p>`}
         ${staff ? `<div class="row"><button class="btn btn-main" id="sAdd">그림체 후보 더하기</button>${st.styles.length ? '' : '<button class="btn" id="sPreset">추천 후보 6개 한 번에 넣기</button>'}</div>
           <p class="muted small">"AI로 견본 만들기"는 모든 후보에 같은 장면(${esc(SAMPLE.slice(0, 22))}…)을 그려서 비교하기 좋아요.</p>` : ''}
@@ -381,11 +441,11 @@
           const picked = st.picked && st.picked.id === s.id, mine = st.mine === s.id;
           return `<article class="sty ${mine ? 'voted' : ''} ${picked ? 'picked' : ''}">
             <div class="sty-img">${s.url ? `<button class="tile-img" data-view="${esc(s.url)}" aria-label="크게 보기"><img src="${esc(s.thumb || s.url)}" alt="" loading="lazy"></button>` : '<span>견본 그림 없음</span>'}</div>
-            <div class="sty-b"><h3>${esc(s.name)}${picked ? ' <span class="chip chip-ok">정함</span>' : ''}</h3><p>${esc(s.prompt)}</p>
+            <div class="sty-b"><h3>${esc(s.name)}${picked ? ' <span class="chip chip-ok">선정</span>' : ''}</h3><p>${esc(s.prompt)}</p>
               <div class="vbar" aria-hidden="true"><span style="width:${Math.round(s.votes / max * 100)}%"></span></div><p class="small muted">${s.votes}표</p>
-              <div class="row"><button class="btn btn-small ${mine ? '' : 'btn-main'}" data-vote="${mine ? '' : s.id}">${mine ? '투표했어요 (취소)' : '이 그림체에 투표'}</button></div>
+              <div class="row"><button class="btn btn-small ${mine ? '' : 'btn-main'}" data-vote="${mine ? '' : s.id}">${mine ? '투표 취소' : '이 그림체에 투표'}</button></div>
               ${staff ? `<div class="row sty-staff"><button class="btn btn-small btn-ai" data-sample="${s.id}">AI로 견본 만들기</button><button class="btn btn-small" data-upl="${s.id}">견본 올리기</button>
-                <button class="btn btn-small" data-edit="${s.id}">고치기</button><button class="btn btn-small ${picked ? '' : 'btn-main'}" data-pick="${picked ? '' : s.id}">${picked ? '정한 것 풀기' : '이걸로 정하기'}</button>
+                <button class="btn btn-small" data-edit="${s.id}">고치기</button><button class="btn btn-small ${picked ? '' : 'btn-main'}" data-pick="${picked ? '' : s.id}">${picked ? '선정 취소' : '이 그림체로 정하기'}</button>
                 <button class="btn btn-small btn-ghost btn-danger" data-del="${s.id}">지우기</button></div>` : ''}</div></article>`;
         }).join('')}</div>` : `<div class="empty"><p>${staff ? '그림체 후보를 더해 주세요.' : '선생님이 그림체 후보를 올리면 여기서 투표할 수 있어요.'}</p></div>`}`;
     };
@@ -414,7 +474,7 @@
       const pk = e.target.closest('[data-pick]');
       if (pk) {
         const s = find(pk.dataset.pick);
-        if (s && !(await ask(`"${s.name}"으로 정할까요?`, '참여자가 AI 그림을 만들 때 이 그림체가 먼저 골라져요. 나중에 바꿀 수 있어요.', '정하기'))) return;
+        if (s && !(await ask(`"${s.name}" 그림체로 정할까요?`, '참여자가 AI 그림을 만들 때 이 그림체가 먼저 골라져요. 나중에 바꿀 수 있어요.', '정하기'))) return;
         await busy(pk, '', async () => { await api('style_pick', { sid: pk.dataset.pick }); await reload(); });
         return;
       }
@@ -472,7 +532,7 @@
         ${acts.length ? acts.map(a => { const got = answers[a.id]; const d = (got && got.data) || {};
           return `<form class="card act" data-act="${a.id}"><h2 class="h2">${esc(a.title)}</h2>${a.desc ? `<p class="muted">${esc(a.desc)}</p>` : ''}
             ${a.fields.map(f => field(a, f, d[f.k])).join('')}
-            <div class="row"><button class="btn btn-main" type="submit">${got ? '고쳐서 다시 내기' : '제출하기'}</button>
+            <div class="row"><button class="btn btn-main" type="submit">${got ? '고쳐서 다시 제출하기' : '제출하기'}</button>
             ${got ? `<span class="muted small">제출했어요 ${hm(got.at)} · 수업 화면에 보여요</span>` : ''}</div></form>`; }).join('')
           : '<div class="empty"><p>이 회차에는 앱에서 적을 활동이 없어요. 선생님 안내를 따라 주세요.</p></div>'}
         <div class="row" style="flex-wrap:wrap"><button class="btn" data-go="map">이야기 지도 열기</button><button class="btn" data-go="interview">AI 인터뷰 열기</button><button class="btn" data-go="write">내 책 쓰기</button></div>`;
@@ -492,9 +552,9 @@
       });
       if (!Object.values(data).some(x => x)) { toast('한 칸 이상 적어 주세요.', true); return; }
       const b = fm.querySelector('button[type=submit]');
-      await busy(b, '내는 중…', async () => {
+      await busy(b, '제출하는 중…', async () => {
         await api('answer_save', { act: a.id, data });
-        answers[a.id] = { data, at: new Date().toISOString() }; draw(); toast('냈어요. 수업 화면에 보여요.');
+        answers[a.id] = { data, at: new Date().toISOString() }; draw(); toast('제출했어요. 수업 화면에 바로 보여요.');
       });
     };
   };

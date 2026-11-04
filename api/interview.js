@@ -14,7 +14,9 @@ const ASK = `당신은 밀양시 가곡동 상상창고에서 열리는 「AI를
 - 대답이 짧으면 고를 수 있게 예시 두세 개를 붙여 묻습니다. 대답이 길면 그중 가장 생생한 한 부분을 골라 더 묻습니다.
 - 사투리·옛말은 그대로 받아들입니다. 장소·인물·연도는 지어내지 않고, 확실하지 않으면 물어봅니다.
 - 상대가 힘든 기억을 꺼내면 더 캐묻지 말고, 이야기하고 싶은 만큼만 해도 된다고 말한 뒤 다른 쪽으로 질문을 돌립니다.
-- 대여섯 번 주고받은 뒤에는 가끔 "지금까지 이야기로 정리해 볼까요, 더 이야기해 볼까요?"라고 물어도 됩니다.
+- 여덟 번쯤 주고받았거나 한 장면이 충분히 그려졌으면, 질문 대신 "오늘 이야기로 충분히 글을 쓸 수 있겠어요. 더 이야기하고 싶은 게 있으면 들려주시고, 아니면 아래 '인터뷰 마치기'를 눌러 주세요."처럼 마무리를 권합니다.
+- 상대가 "그만", "끝", "다 했어요"처럼 끝내고 싶다고 하면 더 묻지 말고, 들려준 이야기에 고마움을 한 문장으로 전한 뒤 '인터뷰 마치기'를 눌러 달라고 안내합니다.
+- 답은 꼭 완결된 문장으로 끝냅니다. 세 문장을 넘기지 않습니다.
 - 질문만 출력합니다. 머리말·목록·따옴표 없이.`;
 
 const SUM = `당신은 이야기책 수업의 글쓰기 선생님입니다. 아래 인터뷰 대화를 읽고 참여자가 책을 쓸 수 있게 글감을 정리합니다.
@@ -34,6 +36,19 @@ const PLAN = `당신은 12쪽 그림책 구성을 돕는 편집자입니다. 참
 - cover: 제목면 그림 장면 묘사 (60자 안팎). title: 책 제목 제안 (15자 안팎).
 - 다른 말 없이 JSON 하나만 출력: {"title":"...","cover":"...","scenes":[{"text":"...","pic":"..."}, ... 5개]}`;
 
+const ESSAY = `당신은 주민의 구술을 짧은 수필로 옮겨 적는 편집자입니다. 아래 인터뷰에서 참여자가 들려준 이야기로, 참여자가 직접 쓴 것처럼 읽히는 1인칭("나") 수필 한 편을 씁니다.
+
+지킬 것
+- 인터뷰에 나온 사실만 씁니다. 장소·사람·연도·사건을 새로 지어내지 않습니다. 모르는 부분은 비워 두거나 흐릿하게 둡니다.
+- 참여자의 표현, 사투리, 입말을 되도록 그대로 살립니다.
+- 자연스러운 한국어로 씁니다. 번역투("~하는 것이었다", "~에 있어서", "그것은 마치 ~와도 같았다"), 같은 말 되풀이, 과장된 감탄, 억지 교훈, "소중한 추억", "잊지 못할" 같은 뻔한 표현을 피합니다.
+- 보이고 들리고 냄새나던 것 같은 구체적인 장면으로 씁니다. 마지막 문단은 담백하게 지금의 나로 돌아와 끝냅니다.
+- 길이는 책 한 쪽 분량인 공백 포함 550~650자, 문단 3~4개. 문단 사이는 빈 줄 하나. 650자를 넘기지 않습니다.
+- 제목은 15자 안팎으로, "추억"·"그리움" 같은 막연한 말보다 글 속 장면이나 사물로 짓습니다. 예) 계곡물은 발끝부터 차가웠다, 철길 옆 붕어빵
+- 다른 말 없이 JSON 하나만 출력: {"title":"수필 제목 (15자 안팎)","essay":"본문"}`;
+
+const FIT = n => `아래 수필을 공백 포함 ${n}자 이내로 줄입니다. 글쓴이의 표현과 문장은 최대한 그대로 두고, 덜 중요한 문장과 꾸밈말만 덜어냅니다. 새 내용은 넣지 않습니다. 문단은 3~4개로 두고 문단 사이는 빈 줄 하나. 다른 말 없이 JSON 하나만 출력: {"essay":"본문"}`;
+
 const clip = (s, n) => String(s || '').slice(0, n);
 
 module.exports = async function handler(req, res) {
@@ -43,7 +58,7 @@ module.exports = async function handler(req, res) {
     res.status(500).json({ error: 'AI 서버 설정(환경변수)이 비어 있어요. 운영자에게 알려 주세요.' }); return;
   }
   const body = readBody(req);
-  const mode = ['ask', 'sum', 'plan'].includes(body.mode) ? body.mode : 'ask';
+  const mode = ['ask', 'sum', 'plan', 'essay', 'fit'].includes(body.mode) ? body.mode : 'ask';
   // msgs: [{r:'ai'|'me', t:'...'}] — 최근 40개만
   const msgs = (Array.isArray(body.msgs) ? body.msgs : []).filter(m => m && m.t).slice(-40).map(m => ({ r: m.r === 'ai' ? 'ai' : 'me', t: clip(m.t, 2000) }));
   const seed = clip(body.seed, 300);
@@ -63,16 +78,27 @@ module.exports = async function handler(req, res) {
         if (last.role === role) last.content += '\n' + m.t; else conv.push({ role, content: m.t });
       }
       if (conv[conv.length - 1].role === 'assistant') conv.push({ role: 'user', content: '(다음 질문을 해 주세요)' });
-      out = { text: clip(await claude({ system: ASK, messages: conv, max_tokens: 400 }), 600) };
+      out = { text: clip(await claude({ system: ASK, messages: conv, max_tokens: 1200 }), 800) };
     } else if (mode === 'sum') {
       if (msgs.filter(m => m.r === 'me').length < 1) { res.status(400).json({ error: '정리할 대답이 아직 없어요.' }); return; }
       const talk = msgs.map(m => `${m.r === 'ai' ? '질문' : '대답'}: ${m.t}`).join('\n');
-      const j = parseJSON(await claude({ system: SUM, messages: [{ role: 'user', content: `<인터뷰>\n${talk}\n</인터뷰>` }], max_tokens: 1500 }));
+      const j = parseJSON(await claude({ system: SUM, messages: [{ role: 'user', content: `<인터뷰>\n${talk}\n</인터뷰>` }], max_tokens: 3000 }));
       out = { summary: clip(j.summary, 3000), topic: clip(j.topic, 200), reader: clip(j.reader, 200), message: clip(j.message, 300), missing: clip(j.missing, 300) };
+    } else if (mode === 'fit') {
+      const essay = clip(body.essay, 4000), max = Math.max(300, Math.min(900, +body.max || 600));
+      if (essay.replace(/\s/g, '').length < 50) { res.status(400).json({ error: '줄일 글이 없어요.' }); return; }
+      const j = parseJSON(await claude({ system: FIT(max), messages: [{ role: 'user', content: `<수필>\n${essay}\n</수필>` }], max_tokens: 3000 }));
+      out = { essay: clip(j.essay, 3000) };
+    } else if (mode === 'essay') {
+      if (msgs.filter(m => m.r === 'me').length < 2) { res.status(400).json({ error: '수필을 쓰려면 인터뷰에서 조금 더 이야기해 주세요.' }); return; }
+      const talk = msgs.map(m => `${m.r === 'ai' ? '질문' : '대답'}: ${m.t}`).join('\n');
+      const extra = [body.topic && `주제: ${clip(body.topic, 300)}`, body.message && `핵심 메시지: ${clip(body.message, 300)}`].filter(Boolean).join('\n');
+      const j = parseJSON(await claude({ system: ESSAY, messages: [{ role: 'user', content: `${extra ? extra + '\n\n' : ''}<인터뷰>\n${talk}\n</인터뷰>` }], max_tokens: 4000 }));
+      out = { title: clip(j.title, 60), essay: clip(j.essay, 3000) };
     } else {
       const info = `주제: ${clip(body.topic, 300)}\n독자: ${clip(body.reader, 200)}\n핵심 메시지: ${clip(body.message, 300)}\n\n<글감>\n${clip(body.summary, 4000)}\n</글감>`;
       if ([body.topic, body.reader, body.message, body.summary].join('').replace(/\s/g, '').length < 4) { res.status(400).json({ error: '주제·독자·핵심 메시지나 인터뷰 정리를 먼저 적어 주세요.' }); return; }
-      const j = parseJSON(await claude({ system: PLAN, messages: [{ role: 'user', content: info }], max_tokens: 1500 }));
+      const j = parseJSON(await claude({ system: PLAN, messages: [{ role: 'user', content: info }], max_tokens: 3000 }));
       const scenes = (Array.isArray(j.scenes) ? j.scenes : []).slice(0, 5).map(s => ({ text: clip(s && s.text, 200), pic: clip(s && s.pic, 250) }));
       out = { title: clip(j.title, 60), cover: clip(j.cover, 250), scenes };
     }

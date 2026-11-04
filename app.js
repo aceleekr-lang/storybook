@@ -167,10 +167,10 @@
       CUR[tr].sessions.forEach(se => g.push({ track: tr, no: se.no, title: `${se.no}회차 ${se.title}`, sub: se.day, list: photos.filter(p => p.track === tr && p.no === se.no) }));
       g.push({ track: tr, no: 0, title: '구분 안 함', sub: `${CUR[tr].name} 사진인데 몇 회차인지 모르는 것`, list: photos.filter(p => p.track === tr && p.no === 0) });
     }
-    g.push({ track: ALL, no: 0, title: '전체 공용', sub: '과정 구분 없이 올린 사진 — 모든 과정 참여자가 봐요', list: photos.filter(p => p.track === ALL) });
+    g.push({ track: ALL, no: 0, title: '전체 공용', sub: '회차 구분 없이 올린 사진 — 모든 참여자가 봐요', list: photos.filter(p => p.track === ALL) });
     return g;
   }
-  const allSpine = on => `<button class="spine s-all" data-tr="${ALL}" aria-pressed="${on ? 'true' : 'false'}"><b>전체 공용</b><small>과정 구분 없음</small></button>`;
+  const allSpine = on => `<button class="spine s-all" data-tr="${ALL}" aria-pressed="${on ? 'true' : 'false'}"><b>전체 공용</b><small>모든 참여자</small></button>`;
   const moveSelect = p => `<select class="mv" data-move="${p.id}" aria-label="다른 곳으로 옮기기"><option value="">옮기기…</option>
       <option value="${ALL}:0" ${p.track === ALL ? 'disabled' : ''}>전체 공용</option>
       ${TRACKS.map(t => `<optgroup label="${esc(CUR[t].name)}"><option value="${t}:0" ${p.track === t && p.no === 0 ? 'disabled' : ''}>구분 안 함</option>${CUR[t].sessions.map(se => `<option value="${t}:${se.no}" ${p.track === t && p.no === se.no ? 'disabled' : ''}>${se.no}회차 ${esc(se.title)}</option>`).join('')}</optgroup>`).join('')}</select>`;
@@ -280,7 +280,7 @@
         <button class="btn btn-main btn-wide" type="submit">가입 신청하기</button>
         <p class="err" id="serr" role="alert"></p>
       </form>
-      <p class="muted center"><button class="linkbtn" id="backLogin" type="button">이미 가입했어요 — 로그인으로</button></p></div>`;
+      <p class="muted center"><button class="linkbtn" id="backLogin" type="button">이미 가입했어요. 로그인하러 가기</button></p></div>`;
     $('#backLogin').onclick = loginView;
     $('#sf').onsubmit = async e => {
       e.preventDefault();
@@ -294,7 +294,7 @@
           consent: { ver: CONSENT.version, privacy: $('#sPriv').checked, ai: $('#sAi').checked } } });
         if (r.error) throw new Error(r.error);
         app.innerHTML = `<div class="login"><h1 class="login-t">가입 신청이 들어왔어요</h1>
-          <p class="login-sub">${esc($('#sName').value.trim())}님, 선생님이 확인하고 승인하면 <b>이름과 비밀번호</b>로 들어올 수 있어요. 승인은 보통 하루 안에 돼요. 급하면 선생님께 말씀해 주세요.</p>
+          <p class="login-sub">${esc($('#sName').value.trim())}님, 선생님이 확인하고 승인하면 <b>이름과 비밀번호</b>로 들어올 수 있어요. 수업 시간에는 바로 승인해 드려요.</p>
           <button class="btn btn-main btn-wide" id="toLogin">로그인 화면으로</button></div>`;
         $('#toLogin').onclick = loginView;
       } catch (err) { $('#serr').textContent = err.message; btn.disabled = false; }
@@ -352,7 +352,7 @@
       <h1 class="login-t">${esc(S.me.name)}님, 시작하기 전에 읽어 주세요</h1>
       ${CONSENT.guardian ? `<p class="guardian">${esc(CONSENT.guardian)}</p>` : ''}
       <section class="c-box"><h2>사진에 대해</h2><p>${esc(CONSENT.photo)}</p>
-        <label class="check"><input type="checkbox" id="cPhoto"> 읽고 확인했어요 <small>(꼭 체크)</small></label></section>
+        <label class="check"><input type="checkbox" id="cPhoto"> 읽고 확인했어요 <small>(필수)</small></label></section>
       <section class="c-box"><h2>AI 기능(교정·인터뷰·그림)에 대해</h2><p>${esc(CONSENT.ai)}</p>
         <label class="check"><input type="checkbox" id="cAi"> AI 기능을 쓰는 데 동의해요 <small>(선택)</small></label></section>
       <button class="btn btn-main btn-wide" id="cGo" disabled>시작하기</button>
@@ -369,12 +369,12 @@
   // AI 교정 동의를 나중에 받거나 바꾸기
   async function setAi(on) {
     S.me.consent = (await api('consent', { ver: CONSENT.version, ai: on })).consent;
-    toast(on ? 'AI 기능에 동의했어요.' : 'AI 기능 동의를 거둬들였어요. 이제 AI 교정·인터뷰·그림을 쓸 수 없어요.');
+    toast(on ? 'AI 기능에 동의했어요.' : 'AI 기능 동의를 취소했어요. 이제 AI 교정·인터뷰·그림을 쓸 수 없어요.');
   }
   function askAi() {
     return new Promise(res => {
       const d = modal(`<h2>AI 기능을 쓰려면 동의가 필요해요</h2><p>${esc(CONSENT.ai)}</p>${CONSENT.guardian ? `<p class="guardian">${esc(CONSENT.guardian)}</p>` : ''}
-        <div class="row end"><button class="btn btn-ghost" data-close>안 쓸래요</button><button class="btn btn-main" id="aiYes">동의하고 계속하기</button></div>`);
+        <div class="row end"><button class="btn btn-ghost" data-close>다음에 할게요</button><button class="btn btn-main" id="aiYes">동의하고 계속하기</button></div>`);
       $('#aiYes', d).onclick = async () => { try { await setAi(true); res(true); } catch (err) { toast(err.message, true); res(false); } d.close(); };
       d.addEventListener('close', () => res(false));
     });
@@ -384,11 +384,11 @@
     const member = S.me.role === 'member';
     const d = modal(`<h2>${esc(S.me.name)}님</h2><p class="muted">${ROLE[S.me.role]}</p>
       ${member ? `<p class="ai-state">AI 기능 동의: <b>${aiOk() ? '동의함' : '동의 안 함'}</b></p>` : ''}
-      <div class="stack">${member ? `<button class="btn" id="mAi">${aiOk() ? 'AI 기능 동의 거둬들이기' : 'AI 기능에 동의하기'}</button>` : ''}<button class="btn" id="mPin">비밀번호 바꾸기</button><button class="btn" id="mOut">로그아웃</button><button class="btn btn-ghost" data-close>닫기</button></div>`);
+      <div class="stack">${member ? `<button class="btn" id="mAi">${aiOk() ? 'AI 기능 동의 취소하기' : 'AI 기능에 동의하기'}</button>` : ''}<button class="btn" id="mPin">비밀번호 바꾸기</button><button class="btn" id="mOut">로그아웃</button><button class="btn btn-ghost" data-close>닫기</button></div>`);
     $('#mOut', d).onclick = async () => { if (S.flush) { try { await S.flush(); } catch { /* 무시 */ } } try { await api('logout'); } catch { /* 무시 */ } d.close(); signOutLocal(); };
     $('#mPin', d).onclick = () => { d.close(); pinDialog(); };
     const ai = $('#mAi', d);
-    if (ai) ai.onclick = async () => { d.close(); if (aiOk()) { if (await ask('AI 기능 동의를 거둬들일까요?', '거둬들이면 AI 교정·인터뷰·그림을 쓸 수 없어요. 이미 고친 글과 만든 그림은 그대로예요.', '거둬들이기')) { try { await setAi(false); } catch (err) { toast(err.message, true); } } } else await askAi(); };
+    if (ai) ai.onclick = async () => { d.close(); if (aiOk()) { if (await ask('AI 기능 동의를 취소할까요?', '취소하면 AI 교정·인터뷰·그림을 쓸 수 없어요. 이미 고친 글과 만든 그림은 그대로 남아요.', '동의 취소하기')) { try { await setAi(false); } catch (err) { toast(err.message, true); } } } else await askAi(); };
   }
   function pinDialog() {
     const d = modal(`<h2>비밀번호 바꾸기</h2><form id="pf" class="stack">
@@ -443,7 +443,7 @@
       let done = false;
       const fin = v => { if (!done) { done = true; resolve(v); } };
       const d = modal(`<h2>AI 교정</h2>
-        <p class="muted">고칠 곳을 알려 줘요. 마음에 드는 것만 골라서 반영하면 돼요. 내 말투는 그대로 둬요.</p>
+        <p class="muted">고칠 곳을 알려 드려요. 마음에 드는 것만 골라 반영하세요. 내 말투는 그대로 살려요.</p>
         <div class="stack"><button class="btn btn-main" data-m="spell">맞춤법·띄어쓰기만 보기</button>
         <button class="btn" data-m="style">어색한 문장까지 보기</button>
         <button class="btn btn-ghost" data-close>닫기</button></div>`, 'm-proof');
@@ -463,11 +463,11 @@
         };
         mi.innerHTML = `<h2>AI 교정</h2>
           ${res.comment ? `<p class="pf-comment">${esc(res.comment)}</p>` : ''}
-          ${items.length ? `<p class="muted">${items.length}곳을 찾았어요. 반영하지 않을 것은 체크를 빼세요.</p>
+          ${items.length ? `<p class="muted">${items.length}곳을 찾았어요. 반영하지 않을 곳은 체크를 해제하세요.</p>
             <ol class="pf-list">${items.map((it, i) => `<li><label class="check"><input type="checkbox" data-i="${i}" checked>
               <span><span class="pf-ctx">${ctx(it)}</span>${it.why ? `<small>${esc(it.why)}</small>` : ''}</span></label></li>`).join('')}</ol>
             <div class="row end"><button class="btn btn-ghost" data-close>그대로 두기</button><button class="btn btn-main" id="pfApply">고른 것 반영하기</button></div>`
-            : '<p class="ok-msg">고칠 곳을 찾지 못했어요. 그대로 실어도 좋아요.</p><div class="row end"><button class="btn" data-close>닫기</button></div>'}`;
+            : '<p class="ok-msg">고칠 곳이 없어요. 이대로 책에 실어도 좋아요.</p><div class="row end"><button class="btn" data-close>닫기</button></div>'}`;
         const ap = $('#pfApply', mi);
         if (ap) ap.onclick = () => {
           let t = text, n = 0;
@@ -541,7 +541,7 @@
     const onConflict = () => {
       if (conflictOpen) return; conflictOpen = true;
       const d = modal(`<h2>다른 곳에서 먼저 고쳤어요</h2>
-        <p>이 작품을 다른 기기${other ? '나 참여자 본인' : '나 선생님'}이 방금 고쳐서 저장을 멈췄어요. 어떻게 할까요?</p>
+        <p>이 작품을 다른 기기${other ? '나 참여자 본인' : '나 선생님'}이 방금 고쳐서, 여기서는 저장을 잠시 멈췄어요. 어떻게 할까요?</p>
         <div class="stack"><button class="btn btn-main" id="cfReload">새로 불러오기 <small>(여기서 방금 고친 것은 사라져요)</small></button>
         <button class="btn" id="cfForce">여기 것으로 덮어쓰기 <small>(다른 곳에서 고친 것이 사라져요)</small></button></div>`);
       d.addEventListener('close', () => { conflictOpen = false; });
@@ -566,7 +566,7 @@
         const wasOk = !!W.confirmed_at;
         W.confirmed_at = r.confirmed_at;
         setState(`저장했어요 ${hhmm()}`);
-        if (wasOk && !r.confirmed_at) { toast('고쳐서 "책에 실어도 좋아요"가 풀렸어요. 다 고치면 다시 눌러 주세요.'); drawFoot(); }
+        if (wasOk && !r.confirmed_at) { toast('글을 고쳐서 "책에 실어도 좋아요" 표시가 풀렸어요. 다 고친 뒤 다시 체크해 주세요.'); drawFoot(); }
       } catch (err) {
         S.dirty = true;
         if (err.message === 'conflict') { setState('다른 곳에서 고쳐서 저장을 멈췄어요', true); onConflict(); }
@@ -583,7 +583,7 @@
     let selEl = -1, noteMode = false, guides = localStorage.getItem('ys_guides') !== 'off';
     const openNotes = pg => (pg.notes || []).filter(n => !n.done).length;
     const ZT = 84 / PX; // 쪽 모음 작은 그림 배율
-    const thumb = (pg, i) => `<li><button class="thumb ${i === sel ? 'on' : ''}" data-sel="${i}" aria-label="${i + 1}번째 쪽${i === sel ? ' (고르는 중)' : ''}${openNotes(pg) ? `, 요청 ${openNotes(pg)}건` : ''}">
+    const thumb = (pg, i) => `<li><button class="thumb ${i === sel ? 'on' : ''}" data-sel="${i}" aria-label="${i + 1}번째 쪽${i === sel ? ' (지금 보는 쪽)' : ''}${openNotes(pg) ? `, 요청 ${openNotes(pg)}건` : ''}">
         <span class="mini" style="zoom:${ZT}">${Book.pageHTML(pg, { track, n: i + 1, color: cur.color, folio: false, lite: true })}</span><span class="tn">${i + 1}</span>${openNotes(pg) ? `<span class="tn-note" aria-hidden="true">${openNotes(pg)}</span>` : ''}</button></li>`;
     await FONT.load(Book.fontsOf([W]));
 
@@ -627,7 +627,7 @@
       if (!pg) { bar.innerHTML = ''; return; }
       const n = openNotes(pg), all = (pg.notes || []).length;
       bar.innerHTML = `<button class="btn btn-small ${guides ? '' : 'btn-ghost'}" data-act="guides" aria-pressed="${guides}">안전영역 ${guides ? '켬' : '끔'}</button>
-        <button class="btn btn-small ${noteMode ? 'btn-main' : 'btn-soft'}" data-act="noteMode">${noteMode ? '쪽에서 자리를 찍어 주세요 (취소)' : other ? '메모 남기기' : '선생님께 요청'}</button>
+        <button class="btn btn-small ${noteMode ? 'btn-main' : 'btn-soft'}" data-act="noteMode">${noteMode ? '취소 · 쪽에서 요청할 자리를 눌러 주세요' : other ? '메모 남기기' : '선생님께 요청'}</button>
         ${all ? `<span class="muted small">요청 ${n ? `<b>${n}건</b> 남음` : '모두 처리됨'}</span>` : ''}`;
     };
     const drawStage = () => {
@@ -684,7 +684,7 @@
       $('#ntSave', d).onclick = () => {
         const text = $('#ntText', d).value.trim(); if (!text) { toast('내용을 적어 주세요.', true); return; }
         pg.notes = pg.notes || []; pg.notes.push({ id: Date.now().toString(36), x, y, text, by: S.me.name, at: new Date().toISOString() });
-        d.close(); changed(); drawStage(); redrawThumb(); toast(other ? '메모를 남겼어요.' : '요청을 남겼어요. 선생님이 보고 답해 줄 거예요.');
+        d.close(); changed(); drawStage(); redrawThumb(); toast(other ? '메모를 남겼어요.' : '요청을 남겼어요. 선생님이 확인하고 답글을 남겨 드려요.');
       };
       d.addEventListener('close', () => { noteMode = false; drawBar(); $('#stage', v).classList.remove('noting'); });
     };
@@ -711,7 +711,7 @@
       const over = Book.markOver(st);
       const bar = $('#overBar', v);
       bar.hidden = !over;
-      if (over) bar.innerHTML = `<span>글이 칸을 넘쳐서 책에서 잘려요.</span><button class="btn btn-small btn-main" data-act="split">넘친 글을 새 쪽으로</button>`;
+      if (over) bar.innerHTML = `<span>글이 칸을 넘쳐서 책에서는 넘친 부분이 잘려요.</span><button class="btn btn-small btn-main" data-act="split">넘친 글 다음 쪽으로 옮기기</button>`;
     };
 
     const empty = () => `<div class="start">
@@ -749,7 +749,7 @@
           <div class="row">${undo && undo.pg === pg ? '<button class="btn btn-small btn-ghost" data-act="undo">교정 되돌리기</button>' : ''}<button class="btn btn-small btn-ai" data-act="proof">AI 교정 받기</button></div></div>
         <details class="e-sec fdet" ${pg.style && (pg.style.font || pg.style.size || pg.style.bold) ? 'open' : ''}><summary>이 쪽의 글꼴·크기·굵게 <small>${pg.style && pg.style.font ? esc(FONT.get(pg.style.font).name) : '기본'}${pg.style && pg.style.size ? ` ${pg.style.size}pt` : ''}${pg.style && pg.style.bold ? ' 굵게' : ''}</small></summary>
           ${fontControls('p', pg.style, `비우면 틀 기본 크기 (${{ prose: track === 'small' ? '12.5' : '10.8', lead: '10.5', cap: '9', box: '10.5', poem: track === 'small' ? '13' : '11.5', diary: '15.5', quote: '17' }[t.text] || '10.8'}pt)`)}
-          <p class="tip">글 칸 전체에 적용돼요. 굵게는 진짜 굵은 글씨가 있는 글꼴에서만 켤 수 있고, 억지로 굵게 만들지 않아요.</p></details>
+          <p class="tip">글 칸 전체에 적용돼요. 굵게는 굵은 글씨체가 따로 있는 글꼴에서만 켤 수 있어요.</p></details>
         ${t.fr.length ? `<div class="e-sec"><p class="f-l">그림·사진 ${t.optional ? '<small>(없어도 돼요)</small>' : ''}</p><div class="slots">${t.fr.map((fr, i) => {
           const im = imgs[i];
           if (!im || !im.url) return `<div class="slot empty"><b>${t.fr.length > 1 ? `${i + 1}번 ` : ''}사진·그림</b>
@@ -757,7 +757,7 @@
           const lv = Book.level(Book.dpi(im, fr));
           return `<div class="slot"><img src="${src(im)}" alt="">
             <span class="q q-${lv}">${{ ok: '인쇄하기 좋아요', warn: '조금 작아요', bad: '너무 작아요' }[lv] || ''}</span>
-            <div class="slot-btns"><button class="btn btn-small" data-pick="${i}">바꾸기</button><button class="btn btn-small btn-ai" data-gen="${i}">AI로 다시</button>${rotBtns(i)}
+            <div class="slot-btns"><button class="btn btn-small" data-pick="${i}">바꾸기</button><button class="btn btn-small btn-ai" data-gen="${i}">AI로 다시 그리기</button>${rotBtns(i)}
             <button class="btn btn-small" data-fit="${i}">${im.fit === 'contain' ? '칸 채우기' : '전체 보이기'}</button>
             <button class="btn btn-small btn-ghost" data-rm="${i}">빼기</button></div></div>`;
         }).join('')}</div>${hidden ? `<p class="muted">이 틀에서는 그림 ${hidden}장이 안 보여요. 다른 틀로 바꾸면 다시 보여요.</p>` : ''}</div>` : ''}`;
@@ -871,7 +871,7 @@
         await saveNow();
         const r = await api('confirm', { track, on, id: other ? arg.id : '' });
         W.confirmed_at = r.confirmed_at;
-        toast(on ? '고마워요! 책에 싣도록 표시했어요.' : '아직 고치는 중으로 바꿨어요.');
+        toast(on ? '고마워요! 책에 실을 원고로 표시했어요.' : '아직 고치는 중으로 바꿨어요.');
       } catch (err) { e.target.checked = !on; if (err.message !== 'conflict') toast(err.message, true); }  // 충돌이면 충돌 창이 이미 떠 있음
     };
 
@@ -943,7 +943,7 @@
       const b = e.target.closest('[data-act]'); if (!b) return;
       const act = b.dataset.act;
       if (act === 'guides') { guides = !guides; localStorage.setItem('ys_guides', guides ? 'on' : 'off'); drawStage(); return; }
-      if (act === 'noteMode') { noteMode = !noteMode; drawBar(); $('#stage', v).classList.toggle('noting', noteMode); if (noteMode) toast('쪽에서 요청할 자리를 찍어 주세요.'); return; }
+      if (act === 'noteMode') { noteMode = !noteMode; drawBar(); $('#stage', v).classList.toggle('noting', noteMode); if (noteMode) toast('쪽에서 요청할 자리를 눌러 주세요.'); return; }
       if (act === 'addText' || act === 'addImg') {
         pg.els = pg.els || [];
         const n = pg.els.length;
@@ -1196,7 +1196,7 @@
         CUR[tr].sessions.forEach(se => g.push({ track: tr, no: se.no, title: `${se.no}회차 ${se.title}`, sub: se.day, list: items.filter(m => m.track === tr && m.no === se.no) }));
         g.push({ track: tr, no: 0, title: `${CUR[tr].name} 공통`, sub: '회차와 상관없는 자료', list: items.filter(m => m.track === tr && m.no === 0) });
       }
-      g.push({ track: ALL, no: 0, title: '모든 과정 공통', sub: '세 과정 참여자 모두가 봐요', list: items.filter(m => m.track === ALL) });
+      g.push({ track: ALL, no: 0, title: '전체 공통', sub: '모든 참여자가 봐요', list: items.filter(m => m.track === ALL) });
       return g;
     };
     const isImg = m => m.kind === 'file' && /^image\//.test(m.mime || '') || /\.(jpe?g|png|webp|gif)$/i.test(m.fname || '');
@@ -1259,7 +1259,7 @@
           if (b.dataset.sl === 'close') close();
           if (b.dataset.sl === 'prev') show(i - 1);
           if (b.dataset.sl === 'next') show(i + 1);
-          if (b.dataset.sl === 'full') { if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); else (root.requestFullscreen || root.webkitRequestFullscreen || function () { toast('이 브라우저는 전체화면을 지원하지 않아요. 폰을 가로로 돌려 보세요.', true); }).call(root); }
+          if (b.dataset.sl === 'full') { if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); else (root.requestFullscreen || root.webkitRequestFullscreen || function () { toast('이 브라우저는 전체화면을 지원하지 않아요. 휴대폰을 가로로 돌려 보세요.', true); }).call(root); }
           return;
         }
         const d = e.target.closest('[data-dot]'); if (d) show(+d.dataset.dot);
@@ -1340,7 +1340,7 @@
       const dl = e.target.closest('[data-del]');
       if (dl) {
         const m = items.find(x => x.id === dl.dataset.del);
-        if (!(await ask(`「${m.title}」을 지울까요?`, '목록에서 빠져요. 파일 자체는 저장소에 남아요.', '지우기'))) return;
+        if (!(await ask(`「${m.title}」 자료를 지울까요?`, '목록에서 빠져요. 파일 자체는 저장소에 남아요.', '지우기'))) return;
         try { await api('material_del', { mid: m.id }); await load(); draw(); } catch (err) { toast(err.message, true); }
       }
     };
@@ -1413,7 +1413,7 @@
         <ul class="pending">${pending.map(p => `<li><b>${esc(p.name)}</b> <span>${esc(fmtPhone(p.phone))}</span> <span>${(p.tracks || []).map(t => `<span class="chip c-${t}">${CUR[t] ? CUR[t].name : t}</span>`).join(' ')}</span>
           <small class="muted">${fmtTime(p.created_at)} 신청${p.consent && p.consent.ai ? ' · AI 동의' : ''}</small>
           <span class="row"><button class="btn btn-small btn-main" data-approve="${p.id}">승인</button><button class="btn btn-small btn-ghost btn-danger" data-reject="${p.id}">거절</button></span></li>`).join('')}</ul></section>` : ''}
-      <p class="lead">참여자는 가입 화면에서 직접 가입하고(이름·휴대폰·비밀번호·과정), 운영자가 승인하면 이름과 비밀번호로 들어와요. 두 과정 이상 참여한 분은 과정마다 따로 써요. 비밀번호를 잊은 분은 "고치기"에서 새로 정해 주세요.</p>
+      <p class="lead">참여자는 가입 화면에서 직접 가입하고(이름·휴대폰·비밀번호), 운영자가 승인하면 이름과 비밀번호로 들어와요. 비밀번호를 잊은 분은 "고치기"에서 새로 정해 주세요.</p>
       <div class="backup"><button class="btn btn-small" id="backup">전체 백업 내려받기</button><span class="muted">참여자·작품·책 정보·사진 목록을 파일 하나(JSON)로 저장해요. 사진 파일 자체는 저장소에 그대로 있어요.</span></div>
       <details class="bulk" ${people.length < 3 ? 'open' : ''}><summary>여러 명 한꺼번에 등록하기</summary>
         <form id="bulk" class="stack">
