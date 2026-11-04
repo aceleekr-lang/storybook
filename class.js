@@ -219,6 +219,28 @@
   const ansOf = act => LIVE.answers.filter(a => a.act === act);
   const summary = a => (ACT[a.act] ? ACT[a.act].fields.map(f => a.data[f.k]).filter(Boolean).join(' · ') : '');
 
+  // AI 인터뷰 내용 보기 (정리 · 수필 · 대화 전체)
+  async function showInterview(id, name) {
+    $('#ansv').innerHTML = `<div class="ansv-in"><p class="ansv-k">AI 인터뷰</p><h2>${esc(name)}</h2><p class="muted">불러오는 중…</p></div>`;
+    $('#ansv').hidden = false;
+    let D = {};
+    try { D = (await api('note_get', { kind: 'interview', id })).data || {}; }
+    catch (err) { $('#ansv .ansv-in').innerHTML += `<p class="muted">${esc(err.message)}</p>`; return; }
+    const msgs = D.msgs || [];
+    const field = (k, v) => v ? `<div class="ansv-f"><b>${k}</b><p>${esc(v).replace(/\n/g, '<br>')}</p></div>` : '';
+    const sum = D.summary ? field('주제', D.topic) + field('독자', D.reader) + field('핵심 메시지', D.message) + field('정리', D.summary) : '<p class="muted ivempty">아직 정리하지 않았어요. 앱에서 "인터뷰 마치기"를 누르면 정리돼요.</p>';
+    const essay = D.essay ? `<h3 class="ivess-t">${esc(D.essayTitle || '제목 없음')}</h3><div class="ivess">${esc(D.essay).replace(/\n/g, '<br>')}</div>` : '<p class="muted ivempty">아직 수필을 쓰지 않았어요.</p>';
+    const talk = msgs.length ? msgs.map(m => `<div class="ivm ${m.r === 'ai' ? 'ai' : 'me'}">${esc(m.t).replace(/\n/g, '<br>')}</div>`).join('') : '<p class="muted ivempty">아직 대화가 없어요.</p>';
+    const first = D.essay ? 'essay' : D.summary ? 'sum' : 'talk';
+    const tabs = [['sum', '정리'], ['essay', '수필'], ['talk', `대화 전체 (대답 ${msgs.filter(m => m.r === 'me').length}번)`]];
+    $('#ansv').innerHTML = `<div class="ansv-in ivview" style="--c:${colorOf(id)}"><p class="ansv-k">AI 인터뷰${D.done ? ' · 마침' : ' · 진행 중'}</p><h2>${esc(name)}</h2>
+      <div class="ivtabs">${tabs.map(([k, l]) => `<button class="ivtab" data-ivtab="${k}" aria-pressed="${k === first}">${l}</button>`).join('')}</div>
+      <div class="ivpane" data-pane="sum" ${first === 'sum' ? '' : 'hidden'}>${sum}</div>
+      <div class="ivpane" data-pane="essay" ${first === 'essay' ? '' : 'hidden'}>${essay}</div>
+      <div class="ivpane" data-pane="talk" ${first === 'talk' ? '' : 'hidden'}>${talk}</div>
+      <button class="btn main" id="ansClose">닫기</button></div>`;
+  }
+
   function showAnswer(act, id) {
     const a = LIVE.answers.find(x => x.act === act && x.id === id); if (!a) return;
     const def = ACT[act];
@@ -231,6 +253,9 @@
   addEventListener('keydown', e => { if (e.key === 'Escape') $('#ansv').hidden = true; });
   document.addEventListener('click', async e => {
     const c = e.target.closest('[data-ans]'); if (c) { const [act, id] = c.dataset.ans.split('|'); showAnswer(act, id); return; }
+    const ivb = e.target.closest('[data-iv]'); if (ivb) { showInterview(ivb.dataset.iv, ivb.textContent); return; }
+    const tab = e.target.closest('[data-ivtab]');
+    if (tab) { $$('.ivtab').forEach(b => b.setAttribute('aria-pressed', b === tab)); $$('.ivpane').forEach(x => { x.hidden = x.dataset.pane !== tab.dataset.ivtab; }); return; }
     const ap = e.target.closest('[data-approve]');
     if (ap) { ap.disabled = true; try { await api('person_approve', { id: ap.dataset.approve, ok: true }); await poll(); } catch (err) { ap.disabled = false; ap.textContent = err.message; } }
   });
@@ -281,7 +306,7 @@
       const noAi = ok.filter(m => !m.ai);
       el.innerHTML = `<p>인터뷰 시작 <b>${started}</b>명 · 정리까지 <b>${summed}</b>명 / ${ok.length}명${noAi.length ? ` <small>AI 동의 안 한 분: ${noAi.map(m => esc(m.name)).join(', ')}</small>` : ''}</p>
         <div class="ivb">${ok.map(m => { const x = by.get(m.id) || { answers: 0 }; const w = Math.min(100, x.answers * 10);
-          return `<div class="ivr"><span class="ivn">${esc(m.name)}</span><span class="ivbar"><i style="width:${w}%;background:${colorOf(m.id)}"></i></span><span class="ivc">${x.answers}번${x.sum ? ' <b>✓정리</b>' : ''}</span></div>`; }).join('')}</div>`;
+          return `<div class="ivr"><button class="ivn" data-iv="${m.id}" title="눌러서 내용 보기">${esc(m.name)}</button><span class="ivbar"><i style="width:${w}%;background:${colorOf(m.id)}"></i></span><span class="ivc">${x.answers}번${x.sum ? ' <b>✓정리</b>' : ''}</span></div>`; }).join('')}</div>`;
     });
     names = ok.map(m => m.name);
     drawMap();
