@@ -705,6 +705,7 @@ td.t-title { max-width: 16em; overflow: hidden; text-overflow: ellipsis; }
 .imcards { margin-top: .6rem; } .imcards:empty { display: none; }
 .cmp-map { display: grid; gap: .4rem; margin-top: .5rem; } .cmp-map img { width: 100%; border-radius: 10px; border: 1px solid var(--line); } .cmp-map ul { margin: 0; padding-left: 0; list-style: none; display: grid; gap: .15rem; }
 .bp { width: 100%; border-collapse: collapse; font-size: .95rem; table-layout: fixed; } .bp th:nth-child(1) { width: 2rem; } .bp th:nth-child(3) { width: 3.2rem; } .bp th:nth-child(4) { width: 5.6rem; } .bp td { overflow-wrap: anywhere; } .bp th, .bp td { border-bottom: 1px solid var(--line); padding: .45rem .3rem; text-align: left; vertical-align: top; } .bp td small { display: block; color: var(--sub); white-space: normal; } .bp .ok { color: var(--town); font-weight: 700; } .bp .warn, .bp-sum .warn { color: var(--red); font-weight: 700; } .bp-sum .ok { color: var(--town); font-weight: 700; } .bp-sum { margin: .8rem 0; }
+.tr-list { list-style: none; padding: 0; margin: .5rem 0; display: grid; gap: .6rem; } .tr-list > li { border: 2px solid var(--line); border-radius: 12px; padding: .6rem .8rem; background: #fff; display: grid; gap: .5rem; } .tr-pages { margin: .3rem 0 0; padding-left: 1.1rem; color: var(--sub); font-size: .92rem; }
 .imnow { margin: .6rem 0 0; padding: .5rem .8rem; background: #FFF6E3; border-radius: 10px; }
 .chips-r { border: 0; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: .4rem; }
 .chips-r legend { font-weight: 600; margin-bottom: .4rem; }

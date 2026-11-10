@@ -122,11 +122,14 @@ create table if not exists public.ys_usage (
 -- 개인 메모: interview(AI 인터뷰 대화·정리) / plan(주제·독자·핵심 메시지·12쪽 구성표)
 create table if not exists public.ys_notes (
   person_id uuid not null references public.ys_people(id) on delete cascade,
-  kind text not null check (kind in ('interview','plan')),
+  kind text not null check (kind in ('interview','plan','trash')),
   data jsonb not null default '{}',
   updated_at timestamptz not null default now(),
   primary key (person_id, kind)
 );
+-- 휴지통(trash) 종류 허용 — 이미 만든 표의 제한도 바꿈 (다시 실행해도 안전)
+alter table public.ys_notes drop constraint if exists ys_notes_kind_check;
+alter table public.ys_notes add constraint ys_notes_kind_check check (kind in ('interview','plan','trash'));
 -- 그림체 후보 (강사·운영자가 올림) · 투표 · 정해진 그림체(ys_settings 'style')
 create table if not exists public.ys_styles (
   id uuid primary key default gen_random_uuid(),
@@ -611,7 +614,7 @@ begin
     return jsonb_build_object('ok', true, 'used', v_n);
 
   -- ===== AI 그림·AI 인터뷰 (api/image.js, api/interview.js 서버 함수가 부름) =====
-  -- 쓰기 전: 동의와 오늘 남은 횟수 확인 (차감하지 않음). 참여자 하루 한도: 그림 10장, 인터뷰 80번
+  -- 쓰기 전: 동의와 오늘 남은 횟수 확인 (차감하지 않음). 참여자 하루 한도: 그림 30장, 인터뷰 80번
   when 'ai_check' then
     if coalesce(d->>'kind', '') not in ('image', 'interview') then return jsonb_build_object('error', '종류를 알 수 없어요.'); end if;
     if exists (select 1 from ys_people x where x.id = v_owner and x.role = 'member'
@@ -621,12 +624,12 @@ begin
         else '이 분은 AI 기능에 동의하지 않았어요. 동의를 받은 뒤에 써 주세요.' end);
     end if;
     if staff then return jsonb_build_object('ok', true, 'left', null); end if;
-    v_n := (case when d->>'kind' = 'image' then 10 else 80 end)
+    v_n := (case when d->>'kind' = 'image' then 30 else 80 end)
            - coalesce((select n from ys_usage where person_id = me.id and kind = d->>'kind'
                        and day = (now() at time zone 'Asia/Seoul')::date), 0);
     if v_n <= 0 then
       return jsonb_build_object('error', case when d->>'kind' = 'image'
-        then '오늘 AI 그림은 다 만들었어요 (하루 10장). 내일 다시 해 주세요.'
+        then '오늘 AI 그림은 다 만들었어요 (하루 30장). 내일 다시 해 주세요.'
         else '오늘 AI 인터뷰 횟수를 다 썼어요 (하루 80번). 내일 이어서 해 주세요.' end, 'left', 0);
     end if;
     return jsonb_build_object('ok', true, 'left', v_n);
@@ -640,11 +643,11 @@ begin
 
   -- ===== 개인 메모 (AI 인터뷰 · 12쪽 구성표) =====
   when 'note_get' then
-    if coalesce(d->>'kind', '') not in ('interview', 'plan') then return jsonb_build_object('error', '종류를 알 수 없어요.'); end if;
+    if coalesce(d->>'kind', '') not in ('interview', 'plan', 'trash') then return jsonb_build_object('error', '종류를 알 수 없어요.'); end if;
     return jsonb_build_object('data', coalesce((select data from ys_notes where person_id = v_owner and kind = d->>'kind'), '{}'::jsonb));
 
   when 'note_save' then
-    if coalesce(d->>'kind', '') not in ('interview', 'plan') then return jsonb_build_object('error', '종류를 알 수 없어요.'); end if;
+    if coalesce(d->>'kind', '') not in ('interview', 'plan', 'trash') then return jsonb_build_object('error', '종류를 알 수 없어요.'); end if;
     if length(coalesce(d->'data', '{}'::jsonb)::text) > 200000 then return jsonb_build_object('error', '메모가 너무 길어요.'); end if;
     insert into ys_notes (person_id, kind, data, updated_at) values (v_owner, d->>'kind', coalesce(d->'data', '{}'::jsonb), now())
     on conflict (person_id, kind) do update set data = excluded.data, updated_at = now();

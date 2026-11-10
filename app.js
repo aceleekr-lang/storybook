@@ -602,7 +602,7 @@
       </div>
       <div class="w-main" style="--tc:${cur.color}">
         <aside class="strip" aria-label="쪽 모음"><ol id="thumbs"></ol>
-          <div class="strip-btns"><button class="btn btn-small" id="addPage">쪽 더하기</button><button class="btn btn-small btn-soft" id="recall">수업 되짚기</button><button class="btn btn-small btn-soft" id="plan12">내 책 구성표</button><button class="btn btn-small btn-main" id="compose">책 차례 맞추기</button><button class="btn btn-small btn-soft" id="pageMgr">쪽 정리</button></div></aside>
+          <div class="strip-btns"><button class="btn btn-small" id="addPage">쪽 더하기</button><button class="btn btn-small btn-soft" id="recall">수업 되짚기</button><button class="btn btn-small btn-soft" id="plan12">내 책 구성표</button><button class="btn btn-small btn-main" id="compose">책 차례 맞추기</button><button class="btn btn-small btn-soft" id="pageMgr">쪽 정리</button><button class="btn btn-small btn-soft" id="trashBtn">휴지통</button></div></aside>
         <section class="stage" aria-label="쪽 미리보기">
           <div class="stage-bar" id="stageBar"></div>
           <div id="stage"></div><div id="overBar" class="over-bar" hidden></div></section>
@@ -723,7 +723,7 @@
         <p class="muted">${esc(cur.name)} 수업에서 한 일을 떠올려 보세요. 질문 하나를 누르면 그 질문이 적힌 새 쪽이 생겨요.</p>
         ${recallHTML()}
         <p><button class="btn btn-main" id="compose2">자기소개 · 수필 · 상상 그림 이야기로 책 차례 맞추기</button></p>
-        <p><button class="btn" id="plan12b">내 책 구성표 보기</button></p>
+        <p class="row" style="flex-wrap:wrap;gap:.5rem"><button class="btn" id="plan12b">내 책 구성표 보기</button><button class="btn btn-soft" id="trashBtn">휴지통</button></p>
         <p class="muted">질문 없이 시작하려면 <button class="linkbtn" data-act="blank">빈 쪽 하나 만들기</button></p></div>`;
     const recallHTML = () => `<ol class="sessions">${cur.sessions.map(s => `<li class="sess">
         <p class="s-when">${s.no}회차${s.day ? `, ${esc(s.day)}` : ''}</p><h3>${esc(s.title)}</h3><p class="s-did">${esc(s.did)}</p>
@@ -899,12 +899,19 @@
         if (!pages) return;
         let mode = 'add';
         if (W.pages.length) {
-          if (await ask(`지금 쓴 ${W.pages.length}쪽을 지우고 이 순서로 바꿀까요?`, '지운 쪽은 되살릴 수 없어요. "아니요"를 누르면 지금 쪽 뒤에 붙일지 물어봐요.', '지우고 바꾸기')) mode = 'replace';
+          if (await ask(`지금 쓴 ${W.pages.length}쪽을 지우고 이 순서로 바꿀까요?`, '지운 쪽은 휴지통에 모여서 되살릴 수 있어요. "아니요"를 누르면 지금 쪽 뒤에 붙일지 물어봐요.', '지우고 바꾸기')) mode = 'replace';
           else if (!(await ask(`지금 쓴 ${W.pages.length}쪽 뒤에 붙일까요?`, '이미 쓴 쪽은 그대로 남아요.', '뒤에 붙이기'))) return;
         }
-        if (mode === 'replace') { W.pages.splice(0, W.pages.length, ...pages); sel = 0; }
+        if (mode === 'replace') { await window.YSX.trashPut(other ? arg.id : '', W.pages.map((pg, i) => ({ i, pg: JSON.parse(JSON.stringify(pg)) })), '책 차례 맞추기로 바꿈'); W.pages.splice(0, W.pages.length, ...pages); sel = 0; }
         else { const at = W.pages.length; W.pages.push(...pages); sel = at; }
         selEl = -1; changed(); drawAll(); toast(`${pages.length}쪽을 넣었어요. 쪽마다 확인하고, 자기소개 쪽에는 사진을 넣어 주세요.`);
+        return;
+      }
+      if (e.target.closest('#trashBtn')) {
+        const back = await window.YSX.openTrash({ owner: other ? arg.id : '' });
+        if (!back) return;
+        back.sort((a, b) => a.i - b.i).forEach(x => W.pages.splice(Math.min(x.i, W.pages.length), 0, x.pg));
+        sel = Math.min(back[0].i, W.pages.length - 1); selEl = -1; changed(); drawAll(); toast(`${back.length}쪽을 되살렸어요.`);
         return;
       }
       if (e.target.closest('#plan12, #plan12b')) {
@@ -1009,7 +1016,8 @@
       }
       if (act === 'dup') addPage(JSON.parse(JSON.stringify(pg)));
       if (act === 'del') {
-        if (!(await ask(`${sel + 1}번째 쪽을 지울까요?`, '지운 쪽은 되살릴 수 없어요.', '지우기'))) return;
+        if (!(await ask(`${sel + 1}번째 쪽을 지울까요?`, '지운 쪽은 휴지통에 모여서 되살릴 수 있어요.', '지우기'))) return;
+        await window.YSX.trashPut(other ? arg.id : '', [{ i: sel, pg: JSON.parse(JSON.stringify(W.pages[sel])) }], '내 책 쓰기에서 지움');
         W.pages.splice(sel, 1); sel = Math.max(0, sel - 1); changed(); drawAll();
       }
       if (act === 'split') {

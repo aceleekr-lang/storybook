@@ -846,12 +846,54 @@ ${pts.map(([x, y, n]) => `<g transform="translate(${x} ${y})"><circle r="32" fil
   }
 
 
+  // ---------- 휴지통: 지운 쪽을 모아 두고 되살리기 (사람마다 하나, 최근 40묶음) ----------
+  async function trashPut(owner, list, from) { // list = [{ i: 원래 자리, pg: 쪽 }]
+    if (!list || !list.length) return;
+    try {
+      const items = ((await api('note_get', { kind: 'trash', id: owner })).data || {}).items || [];
+      items.unshift({ at: new Date().toISOString(), from, idx: list.map(x => x.i), pages: list.map(x => x.pg) });
+      while (items.length > 40 || JSON.stringify(items).length > 190000) items.pop();
+      await api('note_save', { kind: 'trash', data: { items }, id: owner });
+    } catch (err) { console.warn('휴지통 저장 실패', err); }
+  }
+  const pgLabel = p => String(p.head || '').trim() || String(p.text || '').trim().slice(0, 26) || ((p.imgs || []).some(i => i && i.url) ? '그림 쪽' : (p.hint ? p.hint.slice(0, 26) : '빈 쪽'));
+  // 되살릴 쪽을 고르면 [{ i, pg }] 를 돌려줌
+  async function openTrash({ owner = '' } = {}) {
+    let items;
+    try { items = ((await api('note_get', { kind: 'trash', id: owner })).data || {}).items || []; } catch (err) { toast(err.message, true); return null; }
+    const saveT = () => api('note_save', { kind: 'trash', data: { items }, id: owner });
+    return new Promise(resolve => {
+      let done = false;
+      const d = modal('<div id="trIn"></div>', 'm-plan');
+      const draw = () => {
+        $('#trIn', d).innerHTML = `<h2>휴지통</h2>
+          <p class="muted">지운 쪽이 여기 모여요. <b>되살리기</b>를 누르면 원래 있던 자리 근처로 돌아가요. 최근 40번까지 남아요.</p>
+          ${items.length ? `<ul class="tr-list">${items.map((it, k) => `<li><div><b>${new Date(it.at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</b> · ${esc(it.from || '')} · ${it.pages.length}쪽
+              <ul class="tr-pages">${it.pages.map((p, j) => `<li>${(it.idx[j] ?? 0) + 1}번째 쪽이었음 — ${esc(pgLabel(p))}</li>`).join('')}</ul></div>
+              <div class="row" style="gap:.4rem;flex-wrap:wrap"><button class="btn btn-small btn-main" data-tr="${k}">되살리기</button><button class="btn btn-small btn-ghost btn-danger" data-trdel="${k}">완전히 지우기</button></div></li>`).join('')}</ul>` : '<p class="muted">휴지통이 비어 있어요.</p>'}
+          <p class="err" id="trErr" role="alert"></p>
+          <div class="row end"><button class="btn btn-ghost" data-close>닫기</button></div>`;
+      };
+      draw();
+      d.addEventListener('close', () => { if (!done) { done = true; resolve(null); } });
+      d.addEventListener('click', async e => {
+        const r = e.target.closest('[data-tr]'), x = e.target.closest('[data-trdel]');
+        if (!r && !x) return;
+        const k = +(r || x).dataset[r ? 'tr' : 'trdel'];
+        if (x && !(await ask('이 묶음을 완전히 지울까요?', '완전히 지우면 다시 되살릴 수 없어요.', '완전히 지우기'))) return;
+        const it = items.splice(k, 1)[0];
+        try { await saveT(); } catch (err) { items.splice(k, 0, it); $('#trErr', d).textContent = err.message; return; }
+        if (r) { done = true; resolve(it.pages.map((pg, j) => ({ i: it.idx[j] ?? 9999, pg }))); d.close(); } else draw();
+      });
+    });
+  }
+
   // ---------- 쪽 정리: 잘못 들어간 쪽 지우기 · 순서 바꾸기 · 글 고치기 (참여자 본인, 강사·운영자는 참여자 책도) ----------
   const PXW = 152 * 96 / 25.4;
   async function openPageManager({ owner = '', track, name = '' } = {}) {
     let r;
     try { r = await api('work_get', { track, id: owner }); } catch (err) { toast(err.message, true); return false; }
-    const W = r.work; let rows = (Array.isArray(W.pages) ? W.pages : []).map(p => ({ p: JSON.parse(JSON.stringify(p)), on: false }));
+    const W = r.work; let rows = (Array.isArray(W.pages) ? W.pages : []).map((p, i) => ({ p: JSON.parse(JSON.stringify(p)), on: false, i }));
     const isEmpty = p => !String(p.head || '').trim() && !String(p.text || '').trim() && !(p.imgs || []).some(i => i && i.url) && !(p.els || []).length && !p.scene && !p.hint;
     const key = p => JSON.stringify([p.tpl, (p.head || '').trim(), (p.text || '').trim(), (p.imgs || []).map(i => i && i.url), (p.els || []).length]);
     return new Promise(resolve => {
@@ -887,13 +929,15 @@ ${pts.map(([x, y, n]) => `<g transform="translate(${x} ${y})"><circle r="32" fil
         if (a === 'empty') { let n = 0; rows.forEach(x => { if (isEmpty(x.p)) { x.on = true; n++; } }); toast(n ? `빈 쪽 ${n}개를 골랐어요.` : '빈 쪽이 없어요.'); }
         if (a === 'dup') { const seen = new Set(); let n = 0; rows.forEach(x => { const k = key(x.p); if (seen.has(k)) { x.on = true; n++; } else seen.add(k); }); toast(n ? `앞 쪽과 똑같은 쪽 ${n}개를 골랐어요.` : '겹친 쪽이 없어요.'); }
         if (a === 'none') rows.forEach(x => { x.on = false; });
-        if (a === 'del') { const n = rows.filter(x => x.on).length; if (!(await ask(`${n}쪽을 지울까요?`, '저장을 눌러야 실제로 지워져요. 저장 전에는 닫기로 취소할 수 있어요.', '지우기'))) return; rows = rows.filter(x => !x.on); dirty = true; }
+        if (a === 'del') { const n = rows.filter(x => x.on).length; if (!(await ask(`${n}쪽을 지울까요?`, '저장을 눌러야 실제로 지워져요. 지운 쪽은 휴지통에 모여서 되살릴 수 있어요.', '지우기'))) return; rows = rows.filter(x => !x.on); dirty = true; }
         draw();
       };
       $('#pmSave', d).onclick = async e => {
         if (!dirty) { done = true; resolve(false); d.close(); return; }
         await busy(e.target, '저장 중…', async () => {
           try {
+            const kept = new Set(rows.map(x => x.i));
+            await trashPut(owner, (W.pages || []).map((pg, i) => ({ i, pg })).filter(x => !kept.has(x.i)), '쪽 정리에서 지움');
             await api('work_save', { track, title: W.title, pen_name: W.pen_name, intro: W.intro, pages: rows.map(x => x.p), base: W.updated_at || '', id: owner });
             toast('쪽 정리를 저장했어요.'); done = true; resolve(true); d.close();
           } catch (err) { $('#pmErr', d).textContent = err.message === 'conflict' ? '그사이 다른 곳에서 이 책을 고쳤어요. 닫고 다시 열어 주세요.' : err.message; }
@@ -901,5 +945,5 @@ ${pts.map(([x, y, n]) => `<g transform="translate(${x} ${y})"><circle r="32" fil
       };
     });
   }
-  window.YSX = { genImage, openPlan, openBookPlan, secOf, openCompose, openPageManager };
+  window.YSX = { genImage, openPlan, openBookPlan, secOf, openCompose, openPageManager, trashPut, openTrash };
 })();
