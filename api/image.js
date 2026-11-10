@@ -13,7 +13,7 @@ module.exports = async function handler(req, res) {
   }
   const body = readBody(req);
   const scene = String(body.prompt || '').trim();
-  const style = String(body.style || '').trim().slice(0, 600);
+  const style = String(body.style || '').trim().slice(0, 1200);
   const size = SIZE[body.aspect] || SIZE.portrait;
   if (scene.replace(/\s/g, '').length < 4) { res.status(400).json({ error: '어떤 장면인지 조금 더 적어 주세요.' }); return; }
   if (scene.length > 1200) { res.status(400).json({ error: '장면 설명은 1,200자까지 적을 수 있어요.' }); return; }

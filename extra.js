@@ -31,6 +31,22 @@
     return { im, left: j.left };
   }
 
+  // 그림 세부 설정 (그림 만들 때 고름). 고른 값은 이 기기에 기억해 둠
+  const DETAIL = [
+    { k: 'tech', label: '기법', opts: ['수채화', '색연필', '크레파스·오일파스텔', '유화', '목판화', '연필 스케치에 옅은 채색', '수묵 담채', '종이 콜라주', '부드러운 디지털 일러스트', '옛 그림책 인쇄 느낌'] },
+    { k: 'color', label: '색감', opts: ['따뜻한 노을빛', '맑은 파스텔', '선명하고 밝은 원색', '차분한 흙빛·초록', '푸른 새벽빛', '빛바랜 세피아', '흑백'] },
+    { k: 'mood', label: '분위기', opts: ['포근하고 정겨운', '밝고 활기찬', '조용하고 고요한', '신비롭고 꿈같은', '조금 쓸쓸한', '익살스럽고 유쾌한'] },
+    { k: 'time', label: '시간', opts: ['이른 아침', '한낮', '해 질 녘', '밤(달빛·가로등)'] },
+    { k: 'season', label: '계절', opts: ['봄(꽃)', '여름(초록·물놀이)', '가을(단풍·감)', '겨울(눈)'] },
+    { k: 'view', label: '구도·시점', opts: ['인물 가까이', '인물과 배경이 반반', '멀리서 본 마을 풍경', '위에서 내려다보기', '아래에서 올려다보기', '뒷모습'] },
+    { k: 'face', label: '인물 표현', opts: ['동그란 얼굴의 그림책 인물', '사실적인 사람', '귀여운 동물 의인화', '사람 없이 풍경만'] },
+    { k: 'line', label: '선', opts: ['굵은 외곽선', '가늘고 섬세한 선', '외곽선 없이 색면으로'] },
+    { k: 'tex', label: '질감', opts: ['도톰한 종이 질감', '붓 자국이 보이게', '매끈하게', '연필 결이 보이게'] }
+  ];
+  const detLoad = () => { try { return JSON.parse(localStorage.getItem('ys_imgdet') || '{}'); } catch { return {}; } };
+  const detSave = d => { try { localStorage.setItem('ys_imgdet', JSON.stringify(d)); } catch { /* 무시 */ } };
+  const detText = d => DETAIL.filter(g => d[g.k]).map(g => `${g.label}: ${d[g.k]}`).join(', ');
+
   // 그림 만들기 창. 쓸 그림을 고르면 그 그림을, 닫으면 null (album: true면 만든 마지막 그림)
   async function genImage({ owner = '', frame = null, scene = '', text = '', hint = '', album = false } = {}) {
     if (!aiOk() && !(await askAi())) return null;
@@ -41,7 +57,7 @@
     if (st.picked) opts.push({ v: 'p', name: `공동 그림체 — ${st.picked.name}`, prompt: st.picked.prompt });
     st.styles.filter(s => !st.picked || s.id !== st.picked.id).forEach(s => opts.push({ v: s.id, name: `후보 — ${s.name}`, prompt: s.prompt }));
     opts.push({ v: '', name: '그림체 정하지 않음 (기본 그림책풍)', prompt: '' });
-    let asp = aspectOf(frame), last = null;
+    let asp = aspectOf(frame), last = null; const det = detLoad();
     const goLabel = () => `${last ? '다시 만들기' : '그림 만들기'}${left != null ? ` (오늘 ${left}장 남음)` : ''}`;
     return new Promise(resolve => {
       let done = false;
@@ -51,6 +67,10 @@
         <label class="f">장면 설명<textarea id="gP" rows="4" maxlength="1200" placeholder="예) 1980년대 겨울 아침, 밀양역 앞 골목에서 엄마 손을 잡고 걸어가는 여덟 살 아이. 입김이 하얗게 나오고 붕어빵 가게에서 김이 오른다.">${esc(scene)}</textarea></label>
         ${text || hint ? '<p class="tip"><button class="linkbtn" id="gFrom" type="button">이 쪽의 질문과 글 불러오기</button></p>' : ''}
         <label class="f">그림체<select id="gS">${opts.map(o => `<option value="${esc(o.v)}">${esc(o.name)}</option>`).join('')}</select></label>
+        <details class="gdet" id="gDet" open><summary>그림 세부 설정 <small id="gDetSum">${esc(detText(det) || '고르지 않으면 AI가 알아서 정해요')}</small></summary>
+          ${DETAIL.map(g => `<div class="dg"><span class="dg-l">${g.label}</span><div class="dg-o">${g.opts.map(o => `<button type="button" class="dchip" data-dg="${g.k}" data-dv="${esc(o)}" aria-pressed="${det[g.k] === o}">${esc(o)}</button>`).join('')}</div></div>`).join('')}
+          <label class="f">더 바라는 점 <small>예) 할머니는 꽃무늬 몸빼 바지, 강아지는 누렁이</small><input id="gMore" maxlength="200" value="${esc(det.more || '')}"></label>
+          <button type="button" class="linkbtn" id="gDetReset">세부 설정 모두 지우기</button></details>
         <div class="f"><span>모양 ${frame ? '<small>그림 칸에 맞춰 골라 뒀어요</small>' : ''}</span><div class="seg-btns" id="gA">
           ${[['portrait', '세로'], ['landscape', '가로'], ['square', '정사각']].map(([k, l]) => `<button type="button" data-asp="${k}" aria-pressed="${asp === k}">${l}</button>`).join('')}</div></div>
         <div class="gen-out" id="gOut" hidden></div>
@@ -59,6 +79,14 @@
           <button class="btn" id="gUse" hidden>${album ? '확인' : '이 그림 쓰기'}</button>
           <button class="btn btn-main" id="gGo" ${left === 0 ? 'disabled' : ''}>${goLabel()}</button></div>`, 'm-gen');
       d.addEventListener('close', () => { if (!done) { done = true; resolve(album ? last : null); } });
+      $('#gDet', d).onclick = e => {
+        const c = e.target.closest('[data-dg]');
+        if (c) { const k = c.dataset.dg; det[k] = det[k] === c.dataset.dv ? undefined : c.dataset.dv; if (!det[k]) delete det[k];
+          $$(`[data-dg="${k}"]`, d).forEach(x => x.setAttribute('aria-pressed', det[k] === x.dataset.dv)); }
+        if (e.target.closest('#gDetReset')) { Object.keys(det).forEach(k => delete det[k]); $$('[data-dg]', d).forEach(x => x.setAttribute('aria-pressed', 'false')); $('#gMore', d).value = ''; }
+        detSave(det); $('#gDetSum', d).textContent = detText(det) || '고르지 않으면 AI가 알아서 정해요';
+      };
+      $('#gMore', d).oninput = e => { const v = e.target.value.trim(); if (v) det.more = v; else delete det.more; detSave(det); };
       $('#gA', d).onclick = e => { const b = e.target.closest('[data-asp]'); if (!b) return; asp = b.dataset.asp; $$('[data-asp]', d).forEach(x => x.setAttribute('aria-pressed', x === b)); };
       const fromB = $('#gFrom', d);
       if (fromB) fromB.onclick = () => { $('#gP', d).value = [scene, hint.replace(/^\d+쪽 [^—]*— ?/, ''), text].filter(Boolean).join('\n').slice(0, 1200); $('#gP', d).focus(); };
@@ -71,7 +99,8 @@
         go1.disabled = true; $('#gUse', d).disabled = true; $('#gErr', d).textContent = '';
         out.hidden = false; out.innerHTML = '<div class="gen-wait"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span><p>그리는 중이에요… 30초~1분쯤 걸려요. 창을 닫지 말고 기다려 주세요.</p></div>';
         try {
-          const r = await makeImage({ prompt, style: o.prompt, aspect: asp, owner });
+          const style = [o.prompt, detText(det), det.more ? `그 밖에: ${det.more}` : ''].filter(Boolean).join('. ');
+          const r = await makeImage({ prompt, style, aspect: asp, owner });
           last = r.im; if (r.left != null) left = r.left;
           out.innerHTML = `<img src="${esc(last.url)}" alt="AI가 그린 그림"><p class="muted small">사진첩에도 담겼어요. 마음에 안 들면 설명을 고쳐서 다시 만들어 보세요.</p>`;
           $('#gUse', d).hidden = false;
@@ -90,11 +119,24 @@
     const track = myTrack();
     const r = await api('work_get', { track, id: '' });
     const w = r.work; const pages = Array.isArray(w.pages) ? w.pages : [];
-    pages.push(Object.assign({ tpl: 'text', head: '', text: '', imgs: [] }, pg));
+    (Array.isArray(pg) ? pg : [pg]).forEach(x => pages.push(Object.assign({ tpl: 'text', head: '', text: '', imgs: [] }, x)));
     await api('work_save', { track, title: w.title, pen_name: w.pen_name, intro: w.intro, pages, base: w.updated_at || '' });
     return pages.length;
   }
   const saveNote = (kind, data) => api('note_save', { kind, data });
+  // 글을 '글만' 틀 두 쪽으로 나눔 (첫 쪽에 제목). 문단·문장 끝에서 자름
+  async function splitTwo(head, text) {
+    text = String(text || '');
+    const n1 = await Book.fitLength({ tpl: 'text', head, text, imgs: [] }, myTrack());
+    let cut = n1;
+    if (n1 < text.length) {
+      const pb = text.lastIndexOf('\n', n1), sb = Math.max(text.lastIndexOf('. ', n1), text.lastIndexOf('다.', n1) + 1, text.lastIndexOf('요.', n1) + 1);
+      if (pb > n1 * 0.6) cut = pb; else if (sb > n1 * 0.6) cut = sb + 1;
+    }
+    const a = text.slice(0, cut).trim(), b = text.slice(cut).trim();
+    const n2 = b ? await Book.fitLength({ tpl: 'text', head: '', text: b, imgs: [] }, myTrack()) : 0;
+    return { a, b, fits: n2 >= b.length, over: b.slice(n2).replace(/\s/g, '').length, cap: cut + n2 };
+  }
 
   // ---------- 12쪽 구성표 ----------
   const ROLES = [
@@ -172,8 +214,11 @@
     const D = Object.assign({ msgs: [], summary: '', topic: '', reader: '', message: '', missing: '', done: false, essayTitle: '', essay: '' }, nt.data);
     const myPins = pr.pins.filter(p => p.mine);
     let seed = arg.seed || '', sending = false, saveT = null;
-    const save = () => { clearTimeout(saveT); saveT = null; return saveNote('interview', D).catch(err => toast('저장하지 못했어요: ' + err.message, true)); };
-    const later = () => { clearTimeout(saveT); saveT = setTimeout(save, 1200); };
+    const svState = (t, bad) => $$('.svstate', v).forEach(el => { el.textContent = t; el.classList.toggle('bad', !!bad); });
+    const save = () => { clearTimeout(saveT); saveT = null; S.dirty = false; svState('저장 중…');
+      return saveNote('interview', D).then(() => svState(`저장했어요 ${new Date().toTimeString().slice(0, 5)}`))
+        .catch(err => { S.dirty = true; svState('저장하지 못했어요 — 인터넷 연결을 확인해 주세요', true); toast('저장하지 못했어요: ' + err.message, true); }); };
+    const later = () => { clearTimeout(saveT); S.dirty = true; svState('고치는 중…'); saveT = setTimeout(save, 800); };
     S.flush = async () => { if (saveT) await save(); };
     const answers = () => D.msgs.filter(m => m.r === 'me').length;
     const bubble = m => `<div class="bub ${m.r === 'ai' ? 'b-ai' : 'b-me'}"><p>${esc(m.t).replace(/\n/g, '<br>')}</p></div>`;
@@ -193,7 +238,7 @@
             <button class="btn btn-main" id="iSend">보내기</button></form>
           ${answers() >= 8 ? '<p class="tip">이야기를 충분히 들려주셨어요. 더 하고 싶은 이야기가 없으면 인터뷰를 마쳐도 좋아요.</p>' : ''}
           <div class="row"><button class="btn btn-ai" id="iSum" ${answers() ? '' : 'disabled'}>인터뷰 마치기</button><button class="btn btn-ghost btn-small" id="iReset">처음부터 다시</button></div>`}`}
-        ${D.summary ? `<section class="card iv-sum"><h2 class="h2">인터뷰 정리 <small>AI가 정리했어요. 내 기억과 다른 곳은 고쳐 주세요</small></h2>
+        ${D.summary ? `<p class="svstate" aria-live="polite"></p><section class="card iv-sum"><h2 class="h2">인터뷰 정리 <small>AI가 정리했어요. 내 기억과 다른 곳은 고쳐 주세요</small></h2>
             <label class="f">정리<textarea id="sSummary" rows="8">${esc(D.summary)}</textarea></label>
             <label class="f">주제<input id="sTopic" value="${esc(D.topic)}"></label>
             <label class="f">독자<input id="sReader" value="${esc(D.reader)}"></label>
@@ -203,9 +248,9 @@
           <section class="card iv-essay"><h2 class="h2">짧은 수필 <small>인터뷰에서 들려준 이야기로 써요</small></h2>
             ${D.essay ? `<label class="f">제목<input id="eTitle" value="${esc(D.essayTitle)}" maxlength="60"></label>
               <label class="f">본문 <small>직접 고칠 수 있어요. 고친 내용은 자동으로 저장돼요</small><textarea id="eBody" rows="14">${esc(D.essay)}</textarea></label>
-              <p class="fitline" id="eFit">책 한 쪽에 들어가는지 확인하는 중…</p>
-              <div class="row" style="flex-wrap:wrap"><button class="btn btn-main" id="iEssayBook">수필을 내 책에 넣기</button><button class="btn btn-ai" id="iFit" hidden>한 쪽에 맞게 줄이기</button><button class="btn btn-ai" id="iEssay">다시 쓰기</button></div>`
-            : `<p class="muted">AI가 인터뷰 내용으로 책 한 쪽 분량(600자 안팎)의 수필과 제목을 써 줘요. 없는 사실은 지어내지 않고, 내 말투를 살려요. 다 쓴 뒤에는 제목과 본문을 직접 고칠 수 있어요.</p>
+              <p class="fitline" id="eFit">책 두 쪽에 들어가는지 확인하는 중…</p><p class="svstate" aria-live="polite"></p>
+              <div class="row" style="flex-wrap:wrap"><button class="btn btn-main" id="iEssayBook">수필을 내 책에 넣기</button><button class="btn btn-ai" id="iFit" hidden>두 쪽에 맞게 줄이기</button><button class="btn btn-ai" id="iEssay">다시 쓰기</button></div>`
+            : `<p class="muted">AI가 인터뷰 내용으로 책 두 쪽 분량(1,200자 안팎)의 수필과 제목을 써 줘요. 없는 사실은 지어내지 않고, 내 말투를 살려요. 다 쓴 뒤에는 제목과 본문을 직접 고칠 수 있어요.</p>
               <button class="btn btn-ai" id="iEssay" ${answers() >= 2 ? '' : 'disabled'}>이 이야기로 짧은 수필 쓰기</button>`}</section>` : ''}`;
       const ch = $('#chat', v); if (ch) ch.scrollTop = ch.scrollHeight;
       checkFit();
@@ -218,10 +263,10 @@
         const el = $('#eFit', v), btn = $('#iFit', v); if (!el || !window.Book) return;
         const text = D.essay || '';
         try {
-          const n = await Book.fitLength({ tpl: 'text', head: D.essayTitle, text, imgs: [] }, myTrack());
+          const sp = await splitTwo(D.essayTitle, text);
           const len = text.replace(/\s/g, '').length;
-          if (n >= text.length) { el.className = 'fitline ok'; el.textContent = `✓ 책 한 쪽에 들어가요 (${len}자)`; btn.hidden = true; }
-          else { const over = text.slice(n).replace(/\s/g, '').length; fitMax = n; el.className = 'fitline over'; el.textContent = `책 한 쪽보다 약 ${over}자 길어요. 직접 줄이거나 "한 쪽에 맞게 줄이기"를 눌러 주세요. 그대로 넣으면 다음 쪽으로 이어져요.`; btn.hidden = false; }
+          if (sp.fits) { el.className = 'fitline ok'; el.textContent = sp.b ? `✓ 책 두 쪽에 들어가요 (${len}자)` : `✓ 지금은 한 쪽 분량이에요 (${len}자). 두 쪽을 채우려면 조금 더 써도 좋아요`; btn.hidden = true; }
+          else { fitMax = sp.cap; el.className = 'fitline over'; el.textContent = `책 두 쪽보다 약 ${sp.over}자 길어요. 직접 줄이거나 "두 쪽에 맞게 줄이기"를 눌러 주세요.`; btn.hidden = false; }
         } catch { el.textContent = ''; }
       }, 500);
     };
@@ -293,7 +338,7 @@
         await busy(fb, '줄이는 중… (20초쯤)', async () => {
           await save();
           const r = await askAI({ mode: 'fit', essay: D.essay, max: Math.max(300, fitMax - 30) });
-          D.essay = r.essay; await save(); draw(); toast('한 쪽에 맞게 줄였어요. 빠진 문장이 아쉬우면 직접 고쳐 주세요.');
+          D.essay = r.essay; await save(); draw(); toast('두 쪽에 맞게 줄였어요. 빠진 문장이 아쉬우면 직접 고쳐 주세요.');
         });
         return;
       }
@@ -301,7 +346,8 @@
       if (eb) {
         await busy(eb, '넣는 중…', async () => {
           await save();
-          const n = await appendPage({ tpl: 'text', head: D.essayTitle, text: D.essay, hint: 'AI 인터뷰로 쓴 수필 — 글이 칸을 넘치면 "넘친 글 다음 쪽으로 옮기기"를 눌러 주세요.' });
+          const sp = await splitTwo(D.essayTitle, D.essay);
+          const n = await appendPage([{ tpl: 'text', head: D.essayTitle, text: sp.a, hint: '수필 1쪽 (2회차)' }].concat(sp.b ? [{ tpl: 'text', text: sp.b, hint: '수필 2쪽 (2회차)' + (sp.fits ? '' : ' — 글이 넘치면 "넘친 글 다음 쪽으로 옮기기"를 눌러 주세요') }] : []));
           toast(`내 책 ${n}번째 쪽에 넣었어요. "내 책 쓰기"에서 다듬어 주세요.`);
         });
         return;
@@ -530,6 +576,8 @@
         <div class="chips" role="group" aria-label="회차 고르기">${ss.map(x => `<button class="chip-b ${x.no === s.no ? 'on' : ''}" data-no="${x.no}">${x.no}회 ${esc((x.day || '').replace(/\(.\)/, ''))}</button>`).join('')}</div>
         <section class="card"><p class="muted small">${s.no}회차${s.day ? ` · ${esc(s.day)}` : ''}</p><h2 class="h2">${esc(s.title)}</h2></section>
         ${acts.length ? acts.map(a => { const got = answers[a.id]; const d = (got && got.data) || {};
+          if (a.go) return `<section class="card act"><h2 class="h2">${esc(a.title)}</h2>${a.desc ? `<p class="muted">${esc(a.desc)}</p>` : ''}
+            ${got ? `<p class="muted small">저장됨 ${hm(got.at)} · 수업 화면에 보여요</p>` : ''}<button class="btn btn-main" data-go="${a.go}">${esc(a.btn || '열기')}</button></section>`;
           return `<form class="card act" data-act="${a.id}"><h2 class="h2">${esc(a.title)}</h2>${a.desc ? `<p class="muted">${esc(a.desc)}</p>` : ''}
             ${a.fields.map(f => field(a, f, d[f.k])).join('')}
             <div class="row"><button class="btn btn-main" type="submit">${got ? '고쳐서 다시 제출하기' : '제출하기'}</button>
@@ -559,5 +607,196 @@
     };
   };
 
-  window.YSX = { genImage, openPlan };
+  // ---------- 상상 그림 이야기 (3회차): 세로 그림 1쪽 + 글 1쪽 = 한 장면, 1~2장면 ----------
+  const IMAGINE = ['만약에 가곡동 골목에 작은 기차역이 하나 더 생긴다면', '만약에 밀양강 물고기가 말을 한다면', '만약에 상상창고에 밤마다 불이 켜진다면', '만약에 오래된 우체통이 답장을 보낸다면',
+    '만약에 고양이가 가곡동 길 안내를 맡는다면', '만약에 사라진 가게가 하룻밤만 다시 문을 연다면', '만약에 가곡동에 하루 동안 눈이 펑펑 내린다면', '만약에 30년 뒤 가곡동 아이가 나를 찾아온다면'];
+  const STORY_ACT = 's3_story';
+  const PICFR = [132, 205]; // 세로 그림 칸(안전영역 안에 가득) 비율
+  VIEWS.story = async v => {
+    const D = Object.assign({ card: '', idea: '', who: '', where: '', what: '', ending: '', scenes: 1, title: '', parts: [] }, ((await api('answer_get')).answers[STORY_ACT] || {}).data);
+    let saveT = null;
+    const svState = (t, bad) => $$('.svstate', v).forEach(el => { el.textContent = t; el.classList.toggle('bad', !!bad); });
+    const save = () => { clearTimeout(saveT); saveT = null; S.dirty = false; svState('저장 중…');
+      return api('answer_save', { act: STORY_ACT, data: D }).then(() => svState(`저장했어요 ${new Date().toTimeString().slice(0, 5)}`))
+        .catch(err => { S.dirty = true; svState('저장하지 못했어요 — 인터넷 연결을 확인해 주세요', true); toast(err.message, true); }); };
+    const later = () => { clearTimeout(saveT); S.dirty = true; svState('고치는 중…'); saveT = setTimeout(save, 800); };
+    S.flush = async () => { if (saveT || S.dirty) await save(); };
+    const inp = (id, k, ph, area) => area ? `<textarea id="${id}" rows="2" data-k="${k}" placeholder="${esc(ph)}">${esc(D[k])}</textarea>` : `<input id="${id}" data-k="${k}" value="${esc(D[k])}" placeholder="${esc(ph)}">`;
+    const draw = () => {
+      v.innerHTML = `<h1 class="h">상상 그림 이야기</h1>
+        <p class="lead">가곡동을 배경으로 새로운 상상 이야기를 지어요. <b>세로 그림 한 쪽 + 글 한 쪽</b>이 한 장면이에요. AI가 초안을 쓰면 내 말로 고치고, 장면마다 그림을 만들어요.</p>
+        <p class="svstate" aria-live="polite"></p>
+        <section class="card"><h2 class="h2">① 상상 카드 고르기</h2>
+          <div class="chips">${IMAGINE.map(c => `<button class="chip-b ${D.card === c ? 'on' : ''}" data-card="${esc(c)}">${esc(c)}</button>`).join('')}</div>
+          <label class="f" for="sCard">직접 적기<input id="sCard" data-k="card" value="${esc(IMAGINE.includes(D.card) ? '' : D.card)}" placeholder="예) 만약에 가곡동 담벼락 그림이 밤마다 움직인다면"></label>
+          <label class="f" for="sIdea">이 카드로 떠오른 한 줄 <small>발표할 때 소개해요</small>${inp('sIdea', 'idea', '예) 할아버지가 우체통에서 30년 전 엄마 편지를 찾는다', true)}</label></section>
+        <section class="card"><h2 class="h2">② 이야기 씨앗 <small>한두 칸만 적어도 돼요</small></h2>
+          <label class="f" for="sWho">누가 (주인공)${inp('sWho', 'who', '예) 우체부 할아버지, 길고양이 누리')}</label>
+          <label class="f" for="sWhere">가곡동 어디서${inp('sWhere', 'where', '예) 밀양역 뒤 골목, 상상창고 앞 마당')}</label>
+          <label class="f" for="sWhat">무슨 일이 생길까${inp('sWhat', 'what', '예) 우체통에서 30년 전 편지가 나온다', true)}</label>
+          <label class="f" for="sEnd">어떻게 끝날까${inp('sEnd', 'ending', '예) 편지 주인을 찾아 동네 사람들이 모인다', true)}</label>
+          <div class="f"><span>분량</span><div class="seg-btns" role="group">
+            <button data-sc="1" aria-pressed="${+D.scenes !== 2}">2쪽 (한 장면)</button><button data-sc="2" aria-pressed="${+D.scenes === 2}">4쪽 (두 장면)</button></div></div>
+          <button class="btn btn-ai btn-wide" id="sDraft">${D.parts.length ? 'AI 초안 다시 쓰기' : 'AI 초안 쓰기'}</button></section>
+        ${D.parts.length ? `<section class="card"><h2 class="h2">③ 내 말로 고치기</h2>
+          <label class="f" for="sTitle">제목<input id="sTitle" data-k="title" value="${esc(D.title)}" maxlength="40"></label>
+          ${D.parts.map((p, i) => `<div class="scene"><h3 class="sc-h">장면 ${i + 1} <small>${i * 2 + 1}쪽 그림 · ${i * 2 + 2}쪽 글</small></h3>
+            <div class="sc-row"><div class="sc-pic">${p.img && p.img.url ? `<img src="${esc(p.img.thumb || p.img.url)}" alt="장면 ${i + 1} 그림">` : '<span>세로 그림</span>'}</div>
+              <div class="sc-side"><label class="f" for="sPic${i}">그림 장면 설명<textarea id="sPic${i}" rows="4" data-part="${i}" data-pk="pic">${esc(p.pic)}</textarea></label>
+                <button class="btn btn-small btn-ai" data-img="${i}">${p.img && p.img.url ? 'AI로 다시 그리기' : 'AI로 세로 그림 만들기'}</button></div></div>
+            <label class="f" for="sText${i}">글 <small>직접 고칠 수 있어요. 고친 내용은 자동으로 저장돼요</small><textarea id="sText${i}" rows="9" data-part="${i}" data-pk="text">${esc(p.text)}</textarea></label>
+            <p class="fitline" data-fit="${i}"></p></div>`).join('')}
+          <button class="btn btn-main btn-wide" id="sBook">내 책에 넣기 (${D.parts.length * 2}쪽)</button>
+          <p class="muted small">"내 책 쓰기 → 책 차례 맞추기"를 쓰면 자기소개·수필과 함께 순서대로 넣어 줘요.</p></section>` : ''}`;
+      checkFits();
+    };
+    let fitT = null;
+    const checkFits = () => { clearTimeout(fitT); fitT = setTimeout(async () => {
+      for (const [i, p] of D.parts.entries()) {
+        const el = $(`[data-fit="${i}"]`, v); if (!el || !window.Book) continue;
+        const n = await Book.fitLength({ tpl: 'text', head: i === 0 ? D.title : '', text: p.text || '', imgs: [] }, myTrack());
+        const over = (p.text || '').slice(n).replace(/\s/g, '').length;
+        el.className = 'fitline ' + (over ? 'over' : 'ok'); el.textContent = over ? `책 한 쪽보다 약 ${over}자 길어요. 조금 줄여 주세요.` : `✓ 책 한 쪽에 들어가요 (${(p.text || '').replace(/\s/g, '').length}자)`;
+      } }, 500); };
+    draw();
+    v.oninput = e => {
+      const k = e.target.dataset.k, pi = e.target.dataset.part;
+      if (k) { D[k] = e.target.value; if (k === 'card') $$('[data-card]', v).forEach(b => b.classList.toggle('on', b.dataset.card === D.card)); }
+      else if (pi != null) D.parts[+pi][e.target.dataset.pk] = e.target.value; else return;
+      later(); if (k === 'title' || e.target.dataset.pk === 'text') checkFits();
+    };
+    v.onclick = async e => {
+      const c = e.target.closest('[data-card]'); if (c) { D.card = c.dataset.card; $('#sCard', v).value = ''; $$('[data-card]', v).forEach(b => b.classList.toggle('on', b === c)); later(); return; }
+      const sc = e.target.closest('[data-sc]'); if (sc) { D.scenes = +sc.dataset.sc; $$('[data-sc]', v).forEach(b => b.setAttribute('aria-pressed', b === sc)); later(); return; }
+      const dr = e.target.closest('#sDraft');
+      if (dr) {
+        if (!aiOk() && !(await askAi())) return;
+        if (D.parts.length && !(await ask('초안을 다시 쓸까요?', '지금 고친 글과 그림 설명이 새 초안으로 바뀌어요. 만든 그림은 사진첩에 남아 있어요.', '다시 쓰기'))) return;
+        await busy(dr, '이야기를 쓰는 중… (30초쯤)', async () => {
+          const r = await askAI({ mode: 'story', card: D.card, idea: D.idea, who: D.who, where: D.where, what: D.what, ending: D.ending, scenes: D.scenes });
+          D.title = r.title; D.parts = r.scenes.map(x => ({ text: x.text, pic: x.pic, img: null }));
+          await save(); draw(); toast('초안을 썼어요. 내 말로 고치고 그림을 만들어 보세요.');
+        });
+        return;
+      }
+      const im = e.target.closest('[data-img]');
+      if (im) {
+        const i = +im.dataset.img, p = D.parts[i];
+        const got = await genImage({ frame: PICFR, scene: p.pic, text: p.text });
+        if (got) { p.img = got; await save(); draw(); }
+        return;
+      }
+      const bk = e.target.closest('#sBook');
+      if (bk) {
+        await busy(bk, '넣는 중…', async () => { await save(); const n = await appendPage(storyPages(D)); toast(`내 책 ${n}번째 쪽까지 넣었어요. "내 책 쓰기"에서 확인해 주세요.`); });
+      }
+    };
+  };
+  const storyPages = D => D.parts.flatMap((p, i) => [
+    { tpl: 'fullSafe', imgs: p.img && p.img.url ? [p.img] : [], scene: p.pic, hint: `상상 그림 이야기 — 장면 ${i + 1} 그림` },
+    { tpl: 'text', head: i === 0 ? D.title : '', text: p.text, hint: `상상 그림 이야기 — 장면 ${i + 1} 글` }]);
+
+  // ---------- 내 책 차례 맞추기: 자기소개 1쪽 + 수필 2쪽 + 상상 그림 이야기 2~4쪽 ----------
+  async function openCompose({ owner = '' } = {}) {
+    let ans, iv;
+    try { [ans, iv] = await Promise.all([api('answer_get', { id: owner }), api('note_get', { kind: 'interview', id: owner })]); }
+    catch (err) { toast(err.message, true); return null; }
+    const A = ans.answers || {}, I = iv.data || {};
+    const intro = Object.assign({ text: '' }, (A.book_intro || {}).data), memo = (A.s1_intro || {}).data || {};
+    const story = (A[STORY_ACT] || {}).data || { parts: [] };
+    const hasEssay = !!(I.essay || '').trim(), parts = (story.parts || []).length;
+    return new Promise(resolve => {
+      let done = false;
+      const d = modal(`<h2>내 책 차례 맞추기</h2>
+        <p class="muted">세 가지를 이 순서로 내 책에 넣어요. 다 넣은 뒤에도 쪽마다 고칠 수 있어요.</p>
+        <ol class="cmp">
+          <li><b>자기소개 · 1쪽</b> <small>작은 사진 + 소개 글 (사진은 넣은 뒤 그 쪽에서 골라요)</small>
+            <textarea id="cIntro" rows="5" placeholder="나를 소개하는 글 (250~350자)">${esc(intro.text)}</textarea>
+            <button class="btn btn-small btn-ai" id="cIntroAi" ${Object.values(memo).some(Boolean) ? '' : 'disabled'}>1회차 자기소개로 AI 초안 쓰기</button>
+            ${Object.values(memo).some(Boolean) ? '' : '<small class="muted">1회차 "오늘 수업" 자기소개가 비어 있어서 직접 적어 주세요.</small>'}</li>
+          <li><b>수필 · 2쪽</b> ${hasEssay ? `<span class="ok">✓ 「${esc(I.essayTitle || '제목 없음')}」 ${I.essay.replace(/\s/g, '').length}자</span>${I.essay.replace(/\s/g, '').length < 750 ? '<small class="warn">한 쪽 분량이에요. "AI 인터뷰" 수필 칸에서 "다시 쓰기"를 누르면 두 쪽 분량으로 다시 써 줘요. 그대로 넣어도 돼요.</small>' : ''}` : '<span class="warn">아직 없어요 — "AI 인터뷰"에서 수필을 먼저 써 주세요</span>'}</li>
+          <li><b>상상 그림 이야기 · ${parts ? parts * 2 : '2~4'}쪽</b> ${parts ? `<span class="ok">✓ 「${esc(story.title || '제목 없음')}」 장면 ${parts}개, 그림 ${story.parts.filter(p => p.img && p.img.url).length}장</span>` : '<span class="warn">아직 없어요 — "상상 이야기"에서 먼저 써 주세요</span>'}</li>
+        </ol>
+        <p class="err" id="cErr" role="alert"></p>
+        <div class="row end"><button class="btn btn-ghost" data-close>닫기</button><button class="btn btn-main" id="cGo">이 순서로 내 책 만들기</button></div>`, 'm-plan');
+      d.addEventListener('close', () => { if (!done) { done = true; resolve(null); } });
+      const saveIntro = () => api('answer_save', { act: 'book_intro', data: { text: $('#cIntro', d).value }, id: owner }).catch(() => {});
+      $('#cIntro', d).onchange = saveIntro;
+      $('#cIntroAi', d).onclick = async e => {
+        if (!aiOk() && !(await askAi())) return;
+        await busy(e.target, '쓰는 중… (15초쯤)', async () => {
+          const r = await askAI({ mode: 'intro', memo: [memo.call && `불리고 싶은 이름: ${memo.call}`, memo.tie && `가곡동과의 인연: ${memo.tie}`, memo.place && `기억 속 장소: ${memo.place}`].filter(Boolean).join('\n'), owner });
+          $('#cIntro', d).value = r.text; await saveIntro();
+        });
+      };
+      $('#cGo', d).onclick = async () => {
+        const it = $('#cIntro', d).value.trim();
+        if (!it && !hasEssay && !parts) { $('#cErr', d).textContent = '넣을 글이 아직 없어요.'; return; }
+        await saveIntro();
+        const pages = [];
+        if (it) pages.push({ tpl: 'imgSmall', head: '나를 소개합니다', text: it, hint: '자기소개 — 작은 사진 칸에 내 사진이나 그림을 넣어 주세요' });
+        if (hasEssay) { const sp = await splitTwo(I.essayTitle, I.essay); pages.push({ tpl: 'text', head: I.essayTitle, text: sp.a, hint: '수필 1쪽 (2회차)' }); if (sp.b) pages.push({ tpl: 'text', text: sp.b, hint: '수필 2쪽 (2회차)' }); }
+        if (parts) pages.push(...storyPages(story));
+        done = true; resolve(pages); d.close();
+      };
+    });
+  }
+
+
+  // ---------- 쪽 정리: 잘못 들어간 쪽 지우기 · 순서 바꾸기 · 글 고치기 (참여자 본인, 강사·운영자는 참여자 책도) ----------
+  const PXW = 152 * 96 / 25.4;
+  async function openPageManager({ owner = '', track, name = '' } = {}) {
+    let r;
+    try { r = await api('work_get', { track, id: owner }); } catch (err) { toast(err.message, true); return false; }
+    const W = r.work; let rows = (Array.isArray(W.pages) ? W.pages : []).map(p => ({ p: JSON.parse(JSON.stringify(p)), on: false }));
+    const isEmpty = p => !String(p.head || '').trim() && !String(p.text || '').trim() && !(p.imgs || []).some(i => i && i.url) && !(p.els || []).length && !p.scene && !p.hint;
+    const key = p => JSON.stringify([p.tpl, (p.head || '').trim(), (p.text || '').trim(), (p.imgs || []).map(i => i && i.url), (p.els || []).length]);
+    return new Promise(resolve => {
+      let done = false, dirty = false;
+      const d = modal(`<h2>쪽 정리${name ? ` — ${esc(name)}` : ''}</h2>
+        <p class="muted">잘못 들어간 쪽을 골라 지우고, ▲▼로 순서를 바꾸고, 글을 바로 고칠 수 있어요. <b>저장</b>을 눌러야 책에 반영돼요.</p>
+        <div class="pm-tools"><button class="btn btn-small" data-pm="empty">빈 쪽 고르기</button><button class="btn btn-small" data-pm="dup">겹친 쪽 고르기</button>
+          <button class="btn btn-small" data-pm="none">선택 풀기</button><button class="btn btn-small btn-danger" data-pm="del">선택한 쪽 지우기</button></div>
+        <ol class="pm-list" id="pmList"></ol>
+        <p class="err" id="pmErr" role="alert"></p>
+        <div class="row end"><button class="btn btn-ghost" data-close>닫기</button><button class="btn btn-main" id="pmSave">저장</button></div>`, 'm-pm');
+      const draw = () => {
+        $('#pmList', d).innerHTML = rows.length ? rows.map((x, i) => { const p = x.p, t = Book.tpl(p.tpl);
+          return `<li class="pm-row ${x.on ? 'on' : ''}">
+            <label class="pm-chk"><input type="checkbox" data-pon="${i}" ${x.on ? 'checked' : ''} aria-label="${i + 1}쪽 고르기"><b>${i + 1}</b></label>
+            <span class="pm-mini"><span class="mini" style="zoom:${(70 / PXW).toFixed(4)}">${Book.pageHTML(p, { track, n: i + 1, folio: false, lite: true })}</span></span>
+            <div class="pm-body"><small>${esc(t.name)}${p.hint ? ` · ${esc(p.hint.slice(0, 40))}` : ''}</small>
+              ${t.free ? '<p class="muted small">"내 마음대로" 쪽은 내 책 쓰기에서 고쳐요.</p>' : `${t.head ? `<input data-ph="${i}" value="${esc(p.head || '')}" placeholder="${esc(t.head)}" aria-label="${i + 1}쪽 제목">` : ''}
+              <textarea data-pt="${i}" rows="3" aria-label="${i + 1}쪽 글">${esc(p.text || '')}</textarea>`}</div>
+            <div class="pm-mv"><button class="icon-btn" data-up="${i}" ${i ? '' : 'disabled'} aria-label="앞으로">▲</button><button class="icon-btn" data-dn="${i}" ${i < rows.length - 1 ? '' : 'disabled'} aria-label="뒤로">▼</button></div></li>`; }).join('')
+          : '<li class="muted">쪽이 없어요.</li>';
+        const n = rows.filter(x => x.on).length; $('[data-pm="del"]', d).textContent = n ? `선택한 ${n}쪽 지우기` : '선택한 쪽 지우기'; $('[data-pm="del"]', d).disabled = !n;
+      };
+      draw();
+      d.addEventListener('close', () => { if (!done) { done = true; resolve(false); } });
+      d.oninput = e => { const h = e.target.dataset.ph, t = e.target.dataset.pt; if (h != null) rows[+h].p.head = e.target.value; else if (t != null) rows[+t].p.text = e.target.value; else return; dirty = true; };
+      d.onclick = async e => {
+        const c = e.target.closest('[data-pon]'); if (c) { rows[+c.dataset.pon].on = c.checked; draw(); return; }
+        const up = e.target.closest('[data-up]'), dn = e.target.closest('[data-dn]');
+        if (up || dn) { const i = +(up || dn).dataset[up ? 'up' : 'dn'], j = i + (up ? -1 : 1); [rows[i], rows[j]] = [rows[j], rows[i]]; dirty = true; draw(); return; }
+        const t = e.target.closest('[data-pm]'); if (!t) return;
+        const a = t.dataset.pm;
+        if (a === 'empty') { let n = 0; rows.forEach(x => { if (isEmpty(x.p)) { x.on = true; n++; } }); toast(n ? `빈 쪽 ${n}개를 골랐어요.` : '빈 쪽이 없어요.'); }
+        if (a === 'dup') { const seen = new Set(); let n = 0; rows.forEach(x => { const k = key(x.p); if (seen.has(k)) { x.on = true; n++; } else seen.add(k); }); toast(n ? `앞 쪽과 똑같은 쪽 ${n}개를 골랐어요.` : '겹친 쪽이 없어요.'); }
+        if (a === 'none') rows.forEach(x => { x.on = false; });
+        if (a === 'del') { const n = rows.filter(x => x.on).length; if (!(await ask(`${n}쪽을 지울까요?`, '저장을 눌러야 실제로 지워져요. 저장 전에는 닫기로 취소할 수 있어요.', '지우기'))) return; rows = rows.filter(x => !x.on); dirty = true; }
+        draw();
+      };
+      $('#pmSave', d).onclick = async e => {
+        if (!dirty) { done = true; resolve(false); d.close(); return; }
+        await busy(e.target, '저장 중…', async () => {
+          try {
+            await api('work_save', { track, title: W.title, pen_name: W.pen_name, intro: W.intro, pages: rows.map(x => x.p), base: W.updated_at || '', id: owner });
+            toast('쪽 정리를 저장했어요.'); done = true; resolve(true); d.close();
+          } catch (err) { $('#pmErr', d).textContent = err.message === 'conflict' ? '그사이 다른 곳에서 이 책을 고쳤어요. 닫고 다시 열어 주세요.' : err.message; }
+        });
+      };
+    });
+  }
+  window.YSX = { genImage, openPlan, openCompose, openPageManager };
 })();

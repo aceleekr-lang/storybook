@@ -251,6 +251,66 @@ button.ivn:hover { color: var(--river); }
 .ivm { padding: 14px 22px; border-radius: 18px; font-size: 30px; line-height: 1.55; max-width: 85%; }
 .ivm.ai { background: #E6EEF6; justify-self: start; } .ivm.me { background: #FFF6D6; justify-self: end; }
 .ivempty { font-size: 30px; }
+.bk7 { display: grid; grid-template-columns: auto auto auto; justify-content: start; gap: 40px; align-items: end; }
+.bkg { display: grid; gap: 12px; } .bkg p { margin: 0; font-size: 28px; color: var(--sub); } .bkg p b { font-family: var(--display); font-weight: 400; color: var(--ink); }
+.bkp { display: flex; gap: 8px; } .bkp .tw { flex: 0 0 170px; width: 170px; font-size: 22px; }
+.bkg.now .bkp { padding: 10px; border-radius: 16px; box-shadow: 0 0 0 5px var(--sun); }
+.tw.dim { opacity: .45; border-style: dashed; }
+.seed4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
+.sd { background: #fff; border-radius: 22px; padding: 24px; display: grid; gap: 10px; border-top: 10px solid var(--leaf); }
+.sd b { font-family: var(--display); font-weight: 400; font-size: 38px; } .sd span { font-family: var(--book); font-size: 30px; line-height: 1.45; }
+.r3msg { font-size: 34px; line-height: 1.7; max-height: 470px; overflow: auto; }
+.r3msg h3 { font-family: var(--book); font-size: 44px; margin: 0 0 12px; }
+.r3b { display: grid; grid-template-columns: 380px 1fr; gap: 36px; flex: 1; min-height: 0; }
+.r3bv { background: #fff; border-radius: 24px; padding: 26px 30px; display: grid; grid-template-columns: auto 1fr; gap: 26px; align-items: start; overflow: hidden; max-height: 690px; }
+.r3bv img { height: 600px; aspect-ratio: 132/205; object-fit: cover; border-radius: 12px; }
+.r3bv .noimg { height: 600px; aspect-ratio: 132/205; border-radius: 12px; background: #EFE6D6; display: grid; place-items: center; color: var(--sub); font-size: 24px; }
+.r3bv h3 { font-family: var(--book); font-size: 46px; margin: 0 0 14px; } .r3bv .tx { font-family: var(--book); font-size: 29px; line-height: 1.75; max-height: 560px; overflow: auto; }
+.sto { display: grid; gap: 18px; } .sto .sp { display: grid; grid-template-columns: 200px 1fr; gap: 20px; align-items: start; }
+.sto img, .sto .noimg { width: 200px; aspect-ratio: 132/205; object-fit: cover; border-radius: 10px; background: #EFE6D6; }
+.sto .tx { font-family: var(--book); font-size: 30px; line-height: 1.7; margin: 0; }
+.flow6 { list-style: none; margin: 10px 0 0; padding: 0; display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px; }
+.flow6 li { background: #fff; border-radius: 22px; padding: 26px 18px; display: grid; gap: 8px; justify-items: center; text-align: center; position: relative; border-top: 10px solid var(--leaf); }
+.flow6 li:first-child { border-top-color: var(--sub); }
+.flow6 b { font-family: var(--display); font-weight: 400; font-size: 64px; color: var(--leaf); line-height: 1; } .flow6 li:first-child b { color: var(--sub); }
+.flow6 span { font-family: var(--display); font-size: 34px; } .flow6 small { font-size: 23px; color: var(--sub); }
+.flow6 i { font-style: normal; font-family: var(--display); font-size: 24px; background: var(--berry); color: #fff; border-radius: 999px; padding: 4px 16px; margin-top: 6px; }
+.task { display: grid; grid-template-columns: .9fr 1.1fr; gap: 34px; align-items: start; }
+.task-r { display: grid; gap: 16px; }
+.timer-s { padding: 6px 14px; } .timer-s b { font-size: 40px; min-width: 120px; } .timer-s button { padding: 8px 14px; font-size: 22px; }
+.cards-s .mc { height: 100px; } .cards-s { gap: 14px; } .cards-s .mc .front { font-size: 30px; } .cards-s .mc .back { font-size: 32px; }
+.prog { background: rgba(255,255,255,.8); border-radius: 18px; padding: 14px 20px; display: grid; gap: 10px; font-size: 26px; }
+.prog p { margin: 0; } .prog .chiprow { max-height: 150px; overflow-y: auto; } .cards-s ~ .task .prog .chiprow { max-height: 96px; } .prog .chip { font-size: 24px; padding: 3px 14px; }
+.prog .chip.done { background: color-mix(in srgb, var(--c) 18%, #fff); } .prog .chip.not { opacity: .45; border-style: dashed; }
+.spotwrap { flex: 1; min-height: 0; display: grid; grid-template-columns: 360px 1fr; gap: 30px; }
+.spot-l { display: grid; gap: 14px; align-content: start; min-height: 0; }
+.spot-l .rname { font-size: 70px; min-height: 130px; padding: 16px; }
+.spot-l .chiprow { max-height: 330px; overflow-y: auto; align-content: start; }
+.spot-l .chip.used { opacity: .5; } .spot-l .chip.cur { background: var(--ink); color: #fff; }
+.spot-v { background: #fff; border-radius: 26px; padding: 30px 36px; min-height: 0; overflow-y: auto; max-height: 700px; }
+.sv-k { margin: 0 0 6px; font-family: var(--display); color: var(--sub); font-size: 26px; }
+.sv-card { font-family: var(--display); font-size: 58px; line-height: 1.3; margin: 0 0 18px; color: var(--river); }
+.sv-idea { font-family: var(--book); font-size: 46px; line-height: 1.5; margin: 0; }
+.sv-seed { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; } .sv-seed div { background: #F6F8F0; border-radius: 18px; padding: 18px 22px; }
+.sv-seed b { display: block; font-family: var(--display); font-weight: 400; font-size: 28px; color: var(--leaf); } .sv-seed span { font-family: var(--book); font-size: 34px; line-height: 1.45; }
+.sv-title { font-family: var(--book); font-size: 50px; margin: 0 0 14px; }
+.sv-text { font-family: var(--book); font-size: 34px; line-height: 1.8; margin: 0; }
+.sv-imgs { display: flex; gap: 22px; height: 600px; } .sv-imgs img { height: 100%; aspect-ratio: 132/205; object-fit: cover; border-radius: 14px; }
+.sv-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; } .sv-grid button { border: 0; padding: 0; background: none; text-align: left; font-size: 24px; color: var(--ink); }
+.sv-grid img { width: 100%; aspect-ratio: 132/205; object-fit: cover; border-radius: 10px; display: block; }
+.sv-wall { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; } .sv-wall button { text-align: left; border: 0; border-top: 8px solid var(--c, var(--sun)); background: #F6F8F0; border-radius: 14px; padding: 14px 18px; font-size: 24px; line-height: 1.45; }
+.sv-wall button b { display: block; font-family: var(--display); font-weight: 400; color: var(--sub); font-size: 22px; }
+.bkv { display: grid; gap: 14px; } .bkv-sp { display: flex; justify-content: center; gap: 0; }
+.bkv-pg { cursor: zoom-in; border-radius: 0; font: inherit; color: inherit; text-align: left; width: 290px; height: 430px; background: #FCFBF7; border: 1px solid #ddd; padding: 30px 26px; overflow: hidden; position: relative; display: grid; align-content: start; gap: 10px; }
+.bkv-pg img.full { position: absolute; inset: 14px; width: calc(100% - 28px); height: calc(100% - 28px); object-fit: cover; }
+.bkv-pg img.sm { width: 46%; aspect-ratio: 4/3; object-fit: cover; justify-self: center; }
+.bkv-pg h4 { margin: 0; font-family: var(--book); font-size: 22px; } .bkv-pg p { margin: 0; font-family: var(--book); font-size: 15px; line-height: 1.8; white-space: pre-wrap; }
+.bkv-hint { text-align: center; font-size: 22px; color: var(--sub); margin: 0; }
+.bkv-z { display: grid; grid-template-columns: auto 1fr; gap: 30px; align-items: start; cursor: zoom-out; }
+.bkv-z img { height: 520px; max-width: 420px; object-fit: contain; border-radius: 8px; }
+.bkv-z h4 { margin: 0 0 12px; font-family: var(--book); font-size: 40px; } .bkv-z p { margin: 0; font-family: var(--book); font-size: 29px; line-height: 1.75; white-space: pre-wrap; }
+.bkv-pg .pn { position: absolute; bottom: 8px; left: 0; right: 0; text-align: center; font-size: 16px; color: #888; }
+.bkv-nav { display: flex; justify-content: center; gap: 14px; align-items: center; font-size: 26px; }
 </style>
 
 </head>
@@ -653,6 +713,164 @@ button.ivn:hover { color: var(--river); }
     <section class="slide cover" data-sess="2" data-sec="마무리" data-time="21:00" data-note="수고하셨습니다.">
       <div class="kicker">2회차를 마칩니다</div>
       <h1>꺼낸 기억이<br><em>이야기의 뼈대</em>가 돼요</h1>
+      <p class="note">가곡동 상상창고 2층 마을공작소 · 문의 070-4148-3373</p>
+      <svg class="land" viewBox="0 0 1600 120" preserveAspectRatio="none" aria-hidden="true"><path d="M0 70 Q200 20 420 60 T860 50 T1300 40 T1600 60 V120 H0Z" fill="#9CCB8A"/><path d="M0 95 Q400 70 800 92 T1600 85 V120 H0Z" fill="#6FAE6A"/></svg>
+    </section>
+
+    <!-- ===================== 3회차 (11/10 화) — 작업 → 공유발표 다섯 번 ===================== -->
+    <section class="slide cover" data-sess="3" data-sec="대기" data-time="18:50" data-note="앱 새로고침 안내. 위 메뉴에 '상상 이야기'가 보이면 준비 끝.">
+      <div class="kicker">AI를 활용한 가곡동 이야기 책 만들기</div>
+      <h1>3회차<br><em>상상 그림 이야기</em></h1>
+      <div class="datebar">11월 10일(화) 저녁 7시 ~ 9시</div>
+      <div class="row" style="gap:28px;align-items:center;justify-content:center">
+        <div class="qrbox" style="padding:16px;border-width:3px"><div id="qr3" style="width:170px;height:170px"></div></div>
+        <p class="note" style="text-align:left;margin:0">앱을 새로고침해 주세요.<br>위 메뉴에 <b>상상 이야기</b>가 보이면 준비 끝!</p>
+      </div>
+      <div class="live-n" data-live="signup"></div>
+      <svg class="land" viewBox="0 0 1600 120" preserveAspectRatio="none" aria-hidden="true"><path d="M0 70 Q200 20 420 60 T860 50 T1300 40 T1600 60 V120 H0Z" fill="#9CCB8A"/><path d="M0 95 Q400 70 800 92 T1600 85 V120 H0Z" fill="#6FAE6A"/></svg>
+    </section>
+
+    <section class="slide" data-sess="3" data-sec="오늘 흐름" data-time="19:00" data-note="설명은 이 한 장으로 끝. '쓰고 → 보여 주기'를 다섯 번 해요.">
+      <span class="tag berry">오늘은 이렇게</span>
+      <h2 style="font-size:56px">만들고 → 보여 주고, 다섯 번</h2>
+      <ol class="flow6">
+        <li><b>0</b><span>1·2회차 마무리</span><small>자기소개 · 수필</small></li>
+        <li><b>1</b><span>소재 찾기</span><small>상상 카드</small><i>발표</i></li>
+        <li><b>2</b><span>구체화</span><small>씨앗 네 칸</small><i>발표</i></li>
+        <li><b>3</b><span>글 쓰기</span><small>AI 초안 → 내 말로</small><i>발표</i></li>
+        <li><b>4</b><span>그림 만들기</span><small>세로 그림</small><i>발표</i></li>
+        <li><b>5</b><span>책 쪽 구성</span><small>차례 · 미리보기</small><i>발표</i></li>
+      </ol>
+    </section>
+
+    <section class="slide" data-sess="3" data-sec="0 · 1·2회차 마무리" data-time="19:02" data-timer="13" data-note="내 책 쓰기 → 책 차례 맞추기 → 자기소개 AI 초안 → 이 순서로 내 책 만들기. 그다음 자기소개 쪽 사진, 수필 2쪽 다듬기. 잘못 들어간 쪽은 '쪽 정리'로 지우기.">
+      <span class="tag leaf">0 · 1·2회차 마무리 13분</span>
+      <h2 style="font-size:56px">자기소개 1쪽 + 수필 2쪽 넣고 다듬기</h2>
+      <div class="task">
+        <ol class="steps" style="gap:12px">
+          <li><span><b>내 책 쓰기</b> → <b>책 차례 맞추기</b></span></li>
+          <li><span>자기소개 <b>AI 초안</b> → 고치기 → <b>이 순서로 내 책 만들기</b></span></li>
+          <li><span>자기소개 쪽에 <b>내 사진</b>, 수필 두 쪽 다듬기</span></li>
+          <li><span>잘못 들어간 쪽은 <b>쪽 정리</b>로 지우기</span></li>
+        </ol>
+        <div class="task-r"><div class="timer"><b>13:00</b><button data-t="go">시작</button><button class="ghost" data-t="reset">처음으로</button></div>
+          <div class="prog" data-prog="base"></div></div>
+      </div>
+    </section>
+
+    <section class="slide" data-sess="3" data-sec="1 · 소재 찾기" data-time="19:15" data-timer="7" data-note="카드를 함께 몇 장 뒤집고, 앱 상상 이야기 ①에서 카드 고르기 + 떠오른 한 줄. 7분.">
+      <span class="tag leaf">1 · 소재 찾기 7분</span>
+      <h2 style="font-size:52px">만약에 가곡동에… 카드 하나, 떠오른 한 줄</h2>
+      <div class="cards cards-s" id="cards3"></div>
+      <div class="task" style="grid-template-columns:auto 1fr;align-items:center">
+        <div class="row"><button class="btn main" id="c3Draw">한 장 뽑기</button><button class="btn" id="c3All">모두 뒤집기</button><button class="btn" id="c3Reset">처음으로</button>
+          <div class="timer timer-s"><b>07:00</b><button data-t="go">시작</button><button class="ghost" data-t="reset">↺</button></div></div>
+        <div class="prog" data-prog="idea"></div>
+      </div>
+    </section>
+
+    <section class="slide" data-sess="3" data-sec="1 · 소재 발표" data-time="19:22" data-note="한 사람 30초~1분. 왜 그 카드를 골랐는지 물어봐 주세요. 이름을 직접 눌러도 돼요.">
+      <span class="tag berry">발표 1 · 내 소재</span>
+      <div class="spotwrap" data-spot="idea"></div>
+    </section>
+
+    <section class="slide" data-sess="3" data-sec="2 · 구체화" data-time="19:30" data-timer="8" data-note="앱 ② 씨앗 네 칸. 한두 칸만 비어도 괜찮아요. 분량(2쪽/4쪽)도 이때 고르기.">
+      <span class="tag leaf">2 · 구체화 8분</span>
+      <h2 style="font-size:52px">씨앗 네 칸을 채워요</h2>
+      <div class="seed4">
+        <div class="sd"><b>누가</b><span>우체부 할아버지</span></div>
+        <div class="sd"><b>가곡동 어디서</b><span>밀양역 뒤 골목 빨간 우체통</span></div>
+        <div class="sd"><b>무슨 일이</b><span>30년 전 편지가 나온다</span></div>
+        <div class="sd"><b>어떻게 끝날까</b><span>편지 주인을 찾아 동네가 모인다</span></div>
+      </div>
+      <div class="task" style="grid-template-columns:auto 1fr;align-items:start">
+        <div class="timer"><b>08:00</b><button data-t="go">시작</button><button class="ghost" data-t="reset">처음으로</button></div>
+        <div class="prog" data-prog="seed"></div>
+      </div>
+    </section>
+
+    <section class="slide" data-sess="3" data-sec="2 · 구체화 발표" data-time="19:38" data-note="다른 참여자에게 '이 이야기에서 더 궁금한 것 하나'를 물어보게 해요.">
+      <span class="tag berry">발표 2 · 내 이야기 씨앗</span>
+      <div class="spotwrap" data-spot="seed"></div>
+    </section>
+
+    <section class="slide titlecard" data-sess="3" data-sec="쉬는 시간" data-time="19:46" data-timer="10" data-note="10분 휴식.">
+      <span class="tag">쉬는 시간</span>
+      <h1>10분 쉬어 갈게요</h1>
+      <div class="timer"><b>10:00</b><button data-t="go">시작</button><button class="ghost" data-t="reset">처음으로</button></div>
+    </section>
+
+    <section class="slide" data-sess="3" data-sec="3 · 글 쓰기" data-time="19:56" data-timer="14" data-note="AI 초안 쓰기(30초) → 세 군데만 내 말로: 말투, 가곡동 디테일 하나, 마지막 문장. ✓ 한 쪽에 들어가요 확인.">
+      <span class="tag leaf">3 · 글 쓰기 14분</span>
+      <h2 style="font-size:52px">AI 초안 → 세 군데를 내 말로</h2>
+      <div class="three">
+        <div class="th"><b>① 내 말투</b><em>"정말 놀라웠다" → "아이고, 이게 뭐꼬"</em></div>
+        <div class="th"><b>② 가곡동 한 가지</b><em>"골목" → "철길 옆 담장 낮은 골목"</em></div>
+        <div class="th"><b>③ 마지막 문장</b><em>내가 하고 싶은 말로, 제목도 내 맘대로</em></div>
+      </div>
+      <div class="task" style="grid-template-columns:auto 1fr;align-items:start">
+        <div class="timer"><b>14:00</b><button data-t="go">시작</button><button class="ghost" data-t="reset">처음으로</button></div>
+        <div class="prog" data-prog="text"></div>
+      </div>
+    </section>
+
+    <section class="slide" data-sess="3" data-sec="3 · 글 발표" data-time="20:10" data-note="본인이 소리 내어 낭독. 장면이 두 개면 '다음 장면'. 듣는 사람은 마음에 남은 문장 하나를 말해 주기.">
+      <span class="tag berry">발표 3 · 낭독</span>
+      <div class="spotwrap" data-spot="text"></div>
+    </section>
+
+    <section class="slide" data-sess="3" data-sec="4 · 그림 만들기" data-time="20:20" data-timer="12" data-note="그림 장면 설명 고치기 → AI로 세로 그림 → 세부 설정(기법·색감·분위기·시간·계절·구도·인물·선·질감). 1분쯤, 하루 10장.">
+      <span class="tag river">4 · 그림 만들기 12분</span>
+      <h2 style="font-size:52px">장면마다 세로 그림 한 장</h2>
+      <div class="task">
+        <ol class="steps" style="gap:12px">
+          <li><span><b>그림 장면 설명</b> 고치기<small>누가 · 어디서 · 무엇을 · 표정</small></span></li>
+          <li><span><b>AI로 세로 그림 만들기</b></span></li>
+          <li><span><b>그림 세부 설정</b> 고르기<small>기법 · 색감 · 분위기 · 시간 · 계절 · 구도</small></span></li>
+          <li><span>마음에 들면 <b>이 그림 쓰기</b><small>1분쯤 · 하루 10장</small></span></li>
+        </ol>
+        <div class="task-r"><div class="timer"><b>12:00</b><button data-t="go">시작</button><button class="ghost" data-t="reset">처음으로</button></div>
+          <div class="prog" data-prog="img"></div></div>
+      </div>
+    </section>
+
+    <section class="slide" data-sess="3" data-sec="4 · 그림 발표" data-time="20:32" data-note="그림 전시회처럼. 어떤 세부 설정을 골랐는지, 처음 생각과 무엇이 달랐는지 말해 보기.">
+      <span class="tag berry">발표 4 · 그림 전시</span>
+      <div class="spotwrap" data-spot="img"></div>
+    </section>
+
+    <section class="slide" data-sess="3" data-sec="5 · 책 쪽 구성" data-time="20:40" data-timer="8" data-note="상상 이야기 맨 아래 '내 책에 넣기' → 내 책 쓰기에서 순서 확인(쪽 정리) → '책에 실릴 모양 보기'.">
+      <span class="tag berry">5 · 책 쪽 구성 8분</span>
+      <h2 style="font-size:52px">내 책을 처음부터 끝까지 넘겨 봐요</h2>
+      <div class="task">
+        <ol class="steps" style="gap:12px">
+          <li><span>상상 이야기 맨 아래 <b>내 책에 넣기</b></span></li>
+          <li><span><b>내 책 쓰기</b>에서 순서 확인<small>자기소개 → 수필 → 상상 그림 이야기</small></span></li>
+          <li><span>겹치거나 빈 쪽은 <b>쪽 정리</b></span></li>
+          <li><span><b>책에 실릴 모양 보기</b>로 넘겨 보기</span></li>
+        </ol>
+        <div class="task-r"><div class="timer"><b>08:00</b><button data-t="go">시작</button><button class="ghost" data-t="reset">처음으로</button></div>
+          <div class="prog" data-prog="book"></div></div>
+      </div>
+    </section>
+
+    <section class="slide" data-sess="3" data-sec="5 · 책 발표" data-time="20:48" data-note="책을 한 장씩 넘기며 본인이 소개. ◀ ▶로 넘겨요.">
+      <span class="tag berry">발표 5 · 내 책 넘겨 보기</span>
+      <div class="spotwrap" data-spot="book"></div>
+    </section>
+
+    <section class="slide" data-sess="3" data-sec="마무리" data-time="20:56" data-note="앱 '오늘 수업' → 한 줄 소감. 내일 바로 4회차.">
+      <span class="tag">마무리</span>
+      <h2 style="font-size:52px">오늘 한 줄 소감 · 내일 4회차</h2>
+      <div class="task" style="grid-template-columns:1.4fr 1fr;grid-template-rows:minmax(0,1fr);align-items:stretch;flex:1;min-height:0">
+        <div class="wall" data-wall="s3_exit" style="grid-template-columns:repeat(2,1fr);height:100%"></div>
+        <div class="nx"><h3>4회차 · 11월 11일(수) 7시</h3><ul><li>글 완성 · 첫 독자 의견</li><li>사실 확인(장소·인물·연도)</li></ul><h3 style="margin-top:10px">집에서</h3><ul><li>내 책 소리 내어 읽기</li><li>자기소개 사진 고르기</li></ul></div>
+      </div>
+    </section>
+
+    <section class="slide cover" data-sess="3" data-sec="마무리" data-time="21:00" data-note="수고하셨습니다.">
+      <div class="kicker">3회차를 마칩니다</div>
+      <h1>있을 법한 이야기가<br><em>가곡동을 넓혀요</em></h1>
       <p class="note">가곡동 상상창고 2층 마을공작소 · 문의 070-4148-3373</p>
       <svg class="land" viewBox="0 0 1600 120" preserveAspectRatio="none" aria-hidden="true"><path d="M0 70 Q200 20 420 60 T860 50 T1300 40 T1600 60 V120 H0Z" fill="#9CCB8A"/><path d="M0 95 Q400 70 800 92 T1600 85 V120 H0Z" fill="#6FAE6A"/></svg>
     </section>

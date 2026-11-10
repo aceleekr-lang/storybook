@@ -50,7 +50,10 @@
   async function rpc(fn, body) {
     let r;
     try {
-      r = await fetch(`${C.url}/rest/v1/rpc/${fn}`, { method: 'POST', headers: headers({ 'Content-Type': 'application/json' }), body: JSON.stringify(body) });
+      const payload = JSON.stringify(body);
+      // 화면을 닫거나 다른 앱으로 넘어가는 중이면 요청이 끝까지 가도록 keepalive (64KB 제한 안에서만)
+      const keepalive = document.visibilityState === 'hidden' && payload.length < 60000;
+      r = await fetch(`${C.url}/rest/v1/rpc/${fn}`, { method: 'POST', headers: headers({ 'Content-Type': 'application/json' }), body: payload, keepalive });
     } catch { throw new Error('인터넷 연결을 확인해 주세요.'); }
     if (!r.ok) throw new Error(`서버 오류가 났어요 (${r.status}). 잠시 뒤 다시 해 주세요.`);
     return r.json();
@@ -305,7 +308,7 @@
   function tabsFor() {
     const t = [['today', '오늘 수업']];
     if (!isStaff() || (S.me.tracks || []).length) t.push(['write', '내 책 쓰기']);
-    t.push(['map', '이야기 지도'], ['interview', 'AI 인터뷰'], ['style', '그림체']);
+    t.push(['map', '이야기 지도'], ['interview', 'AI 인터뷰'], ['story', '상상 이야기'], ['style', '그림체']);
     if (!isStaff() || (S.me.tracks || []).length) t.push(['album', '사진첩']);
     if (isStaff() || (S.me.tracks || []).length) t.push(['docs', '교육자료']);
     if (isStaff()) t.push(['board', '현황판'], ['photos', '회차 사진'], ['book', '책 만들기']);
@@ -599,7 +602,7 @@
       </div>
       <div class="w-main" style="--tc:${cur.color}">
         <aside class="strip" aria-label="쪽 모음"><ol id="thumbs"></ol>
-          <div class="strip-btns"><button class="btn btn-small" id="addPage">쪽 더하기</button><button class="btn btn-small btn-soft" id="recall">수업 되짚기</button><button class="btn btn-small btn-soft" id="plan12">12쪽 구성표</button></div></aside>
+          <div class="strip-btns"><button class="btn btn-small" id="addPage">쪽 더하기</button><button class="btn btn-small btn-soft" id="recall">수업 되짚기</button><button class="btn btn-small btn-soft" id="plan12">12쪽 구성표</button><button class="btn btn-small btn-main" id="compose">책 차례 맞추기</button><button class="btn btn-small btn-soft" id="pageMgr">쪽 정리</button></div></aside>
         <section class="stage" aria-label="쪽 미리보기">
           <div class="stage-bar" id="stageBar"></div>
           <div id="stage"></div><div id="overBar" class="over-bar" hidden></div></section>
@@ -632,6 +635,7 @@
     };
     const drawStage = () => {
       const st = $('#stage', v);
+      if (!st || !v.isConnected) return; // 다른 화면으로 넘어간 뒤 늦게 도착한 다시 그리기
       drawBar();
       if (!page()) { st.innerHTML = ''; $('#overBar', v).hidden = true; return; }
       const pg = page(), t = Book.tpl(pg.tpl);
@@ -718,7 +722,8 @@
         <h2>어디서부터 써 볼까요?</h2>
         <p class="muted">${esc(cur.name)} 수업에서 한 일을 떠올려 보세요. 질문 하나를 누르면 그 질문이 적힌 새 쪽이 생겨요.</p>
         ${recallHTML()}
-        <p><button class="btn btn-main" id="plan12b">12쪽 구성표로 한 번에 시작하기</button></p>
+        <p><button class="btn btn-main" id="compose2">자기소개 · 수필 · 상상 그림 이야기로 책 차례 맞추기</button></p>
+        <p><button class="btn" id="plan12b">12쪽 구성표로 시작하기</button></p>
         <p class="muted">질문 없이 시작하려면 <button class="linkbtn" data-act="blank">빈 쪽 하나 만들기</button></p></div>`;
     const recallHTML = () => `<ol class="sessions">${cur.sessions.map(s => `<li class="sess">
         <p class="s-when">${s.no}회차${s.day ? `, ${esc(s.day)}` : ''}</p><h3>${esc(s.title)}</h3><p class="s-did">${esc(s.did)}</p>
@@ -884,6 +889,24 @@
       if (th) { sel = +th.dataset.sel; selEl = -1; noteMode = false; drawAll(); return; }
       if (e.target.closest('#addPage')) { addPage({ tpl: page() ? 'text' : (cur.sessions[0].tpl) }); return; }
       if (e.target.closest('#recall')) { recall(); return; }
+      if (e.target.closest('#pageMgr')) {
+        try { await saveNow(); } catch { return; }
+        if (await window.YSX.openPageManager({ owner: other ? arg.id : '', track, name: other ? ownerName : '' })) go('write', { ...arg, track, sel: 0 });
+        return;
+      }
+      if (e.target.closest('#compose, #compose2')) {
+        const pages = await window.YSX.openCompose({ owner: other ? arg.id : '' });
+        if (!pages) return;
+        let mode = 'add';
+        if (W.pages.length) {
+          if (await ask(`지금 쓴 ${W.pages.length}쪽을 지우고 이 순서로 바꿀까요?`, '지운 쪽은 되살릴 수 없어요. "아니요"를 누르면 지금 쪽 뒤에 붙일지 물어봐요.', '지우고 바꾸기')) mode = 'replace';
+          else if (!(await ask(`지금 쓴 ${W.pages.length}쪽 뒤에 붙일까요?`, '이미 쓴 쪽은 그대로 남아요.', '뒤에 붙이기'))) return;
+        }
+        if (mode === 'replace') { W.pages.splice(0, W.pages.length, ...pages); sel = 0; }
+        else { const at = W.pages.length; W.pages.push(...pages); sel = at; }
+        selEl = -1; changed(); drawAll(); toast(`${pages.length}쪽을 넣었어요. 쪽마다 확인하고, 자기소개 쪽에는 사진을 넣어 주세요.`);
+        return;
+      }
       if (e.target.closest('#plan12, #plan12b')) {
         const pages = await window.YSX.openPlan({ owner: other ? arg.id : '', track, title: W.title });
         if (!pages) return;
@@ -1509,6 +1532,12 @@
     if (!S.token) return loginView();
     try { S.me = (await api('me')).me; enter(); } catch { if (!S.me) loginView(); }
   }
+  // 화면을 숨기거나(다른 앱·탭으로 이동) 닫을 때 쓰던 내용을 바로 저장
+  const flushNow = () => { if (S.flush) S.flush().catch(() => { /* 화면에 표시됨 */ }); };
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushNow(); });
+  window.addEventListener('pagehide', flushNow);
+  window.addEventListener('beforeunload', e => { if (S.dirty) { flushNow(); e.preventDefault(); e.returnValue = ''; } });
+
   // extra.js(이야기 지도·AI 인터뷰·그림체·AI 그림·12쪽 구성표)가 쓰는 공용 도구
   window.YS = { C, CUR, TRACKS, S, VIEWS, api, go, modal, ask, toast, esc, $, $$, busy, store, encode, toAlbum, uploadImage, pickFile,
     src, viewPhoto, isStaff, aiOk, askAi, signOutLocal };

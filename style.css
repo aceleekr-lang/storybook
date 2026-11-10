@@ -708,3 +708,52 @@ td.t-title { max-width: 16em; overflow: hidden; text-overflow: ellipsis; }
 .fitline { margin: 0; font-size: .92rem; color: var(--sub); }
 .fitline.ok { color: var(--town); font-weight: 700; }
 .fitline.over { color: #8a5a00; font-weight: 600; }
+/* 그림 세부 설정 */
+.gdet { border: 2px solid var(--line); border-radius: 12px; padding: .5rem .8rem; background: #fff; }
+.gdet summary { font-weight: 700; cursor: pointer; min-height: 40px; display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; }
+.gdet summary small { font-weight: 400; color: var(--sub); font-size: .82rem; }
+.dg { display: grid; gap: .3rem; margin: .5rem 0; }
+.dg-l { font-weight: 700; font-size: .9rem; }
+.dg-o { display: flex; flex-wrap: wrap; gap: .3rem; }
+.dchip { border: 2px solid var(--line); background: #fff; border-radius: 999px; padding: .3rem .75rem; min-height: 38px; font-size: .9rem; cursor: pointer; }
+.dchip[aria-pressed="true"] { border-color: var(--story); background: #E6EEF6; font-weight: 700; }
+.svstate { margin: 0; font-size: .88rem; color: var(--sub); min-height: 1.2em; }
+.svstate.bad { color: var(--red); font-weight: 700; }
+/* 상상 그림 이야기 · 책 차례 맞추기 */
+.view-story { max-width: 820px; margin: 0 auto; }
+.scene { border-top: 2px dashed var(--line); padding-top: .8rem; display: grid; gap: .6rem; }
+.sc-h { margin: 0; font: 700 1.1rem/1.4 var(--serif); } .sc-h small { font: 400 .85rem var(--ui); color: var(--sub); }
+.sc-row { display: grid; grid-template-columns: 150px 1fr; gap: .8rem; align-items: start; }
+@media (max-width: 520px) { .sc-row { grid-template-columns: 110px 1fr; } }
+@media (max-width: 400px) { .sc-row { grid-template-columns: 1fr; } .sc-row > :first-child { width: 140px; justify-self: center; } }
+.sc-pic { aspect-ratio: 132 / 205; max-width: 100%; border-radius: 10px; background: #EFE6D6; display: grid; place-items: center; overflow: hidden; color: var(--sub); font-size: .85rem; }
+.sc-pic img { width: 100%; height: 100%; object-fit: cover; }
+.sc-side { display: grid; gap: .5rem; min-width: 0; }
+.cmp { padding-left: 1.2rem; display: grid; gap: .9rem; margin: .5rem 0; }
+.cmp li { display: grid; gap: .35rem; } .cmp small { color: var(--sub); }
+.cmp .ok { color: var(--town); font-weight: 700; } .cmp .warn { color: #8a5a00; }
+/* 쪽 정리 */
+.m-pm { width: min(760px, calc(100vw - 1.5rem)); }
+.pm-tools { display: flex; flex-wrap: wrap; gap: .4rem; margin: .5rem 0; position: sticky; top: 0; background: var(--card); padding: .4rem 0; z-index: 1; }
+.pm-list { list-style: none; padding: 0; margin: 0; display: grid; gap: .5rem; }
+.pm-row { display: grid; grid-template-columns: auto 76px 1fr auto; gap: .6rem; align-items: start; padding: .5rem; border: 2px solid var(--line); border-radius: 12px; background: #fff; }
+.pm-row.on { border-color: var(--red); background: #FDF0EE; }
+.pm-chk { display: grid; justify-items: center; gap: .2rem; font-weight: 400; } .pm-chk input { width: 22px; height: 22px; }
+.pm-mini { width: 76px; height: 112px; overflow: hidden; border: 1px solid var(--line); background: #fff; }
+.pm-body { display: grid; gap: .3rem; min-width: 0; } .pm-body small { color: var(--sub); }
+.pm-body input, .pm-body textarea { min-height: 40px; font-size: .95rem; }
+.pm-mv { display: grid; gap: .3rem; }
+@media (max-width: 520px) { .pm-row { grid-template-columns: auto 56px 1fr; } .pm-mv { grid-column: 1 / -1; display: flex; justify-content: flex-end; } .pm-mini { width: 56px; height: 83px; } .pm-mini .mini { zoom: .097 !important; } }
+
+@media (max-width: 420px) {
+  /* 휴대폰: 보조 글씨도 15px 밑으로 내려가지 않게 (어르신 가독성) */
+  small, .muted, .tip, .fitline, .svstate, .save-state, .s-when, .legend, .small, .f small, .gdet summary small, .stage-bar .small,
+  .btn-small, .stage-bar .btn, .strip-btns .btn, .linkbtn, .icon-btn, .over-bar, .warn-line, .pf-list small, .ord-st, .bk-bar-l span, .w-foot .save-state, .dg-l, .dchip, .check.small, .sc-pic, .pr-n { font-size: 15px; }
+  small { font-size: 15px !important; }
+  .chip { font-size: 14px; } .role { font-size: 13px; } .tplb { font-size: 13.5px; }
+  .linkbtn { min-height: 40px; }
+  .me, .role { white-space: nowrap; } .brand { font-size: .98rem; }
+  /* 쪽 정리: 윗줄 = 고르기·미리보기·순서, 아랫줄 = 고치는 칸을 넓게 */
+  .pm-row { grid-template-columns: auto 56px 1fr; } .pm-mv { order: 1; grid-column: auto; display: flex; justify-content: flex-end; align-items: start; }
+  .pm-body { order: 2; grid-column: 1 / -1; }
+}

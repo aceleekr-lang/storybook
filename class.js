@@ -65,7 +65,7 @@
     const teacher = store.get('teacher', ''), line = store.get('line', '');
     $$('[data-bind="teacher"]').forEach(el => { el.textContent = teacher || '강사 이름'; });
     $$('[data-bind="teacherLine"]').forEach(el => { el.textContent = line || '한 줄 소개를 ⚙ 설정에서 적어 주세요'; });
-    ['qr', 'qr0', 'qr2'].forEach(id => {
+    ['qr', 'qr0', 'qr2', 'qr3'].forEach(id => {
       const box = $('#' + id); box.innerHTML = '';
       const sz = Math.round(parseFloat(box.style.width) || 340);
       if (url && window.QRCode) new QRCode(box, { text: url, width: sz, height: sz, correctLevel: QRCode.CorrectLevel.M });
@@ -241,8 +241,14 @@
       <button class="btn main" id="ansClose">닫기</button></div>`;
   }
 
+  const storyHTML = d => `<div class="sto">${(d.parts || []).map((p, i) => `<div class="sp">${p.img && p.img.url ? `<img src="${esc(p.img.url)}" alt="">` : '<div class="noimg"></div>'}<p class="tx">${esc(p.text || '').replace(/\n/g, '<br>')}</p></div>`).join('') || '<p class="muted">아직 초안을 쓰지 않았어요.</p>'}</div>`;
   function showAnswer(act, id) {
     const a = LIVE.answers.find(x => x.act === act && x.id === id); if (!a) return;
+    if (act === 's3_story') {
+      $('#ansv').innerHTML = `<div class="ansv-in ivview" style="--c:${colorOf(id)}"><p class="ansv-k">상상 그림 이야기 · ${esc(a.name)}</p><h2>${esc(a.data.title || a.data.card || '제목 없음')}</h2>
+        <div class="ivpane">${storyHTML(a.data)}</div><button class="btn main" id="ansClose">닫기</button></div>`;
+      $('#ansv').hidden = false; return;
+    }
     const def = ACT[act];
     $('#ansv').innerHTML = `<div class="ansv-in" style="--c:${colorOf(id)}"><p class="ansv-k">${esc(def ? def.title : act)}</p><h2>${esc(a.data.call ? `${a.data.call} (${a.name})` : a.name)}</h2>
       ${(def ? def.fields : []).filter(f => a.data[f.k] && f.k !== 'call').map(f => `<div class="ansv-f"><b>${esc(f.label)}</b><p>${esc(a.data[f.k]).replace(/\n/g, '<br>')}</p></div>`).join('')}
@@ -290,7 +296,7 @@
       const list = ansOf(el.dataset.act);
       const missing = ok.filter(m => !list.some(a => a.id === m.id));
       el.innerHTML = `<p>앱에 적어 낸 분 <b>${list.length}</b>명${ok.length ? ` / ${ok.length}명` : ''} <small>이름을 누르면 크게 보여요</small></p>
-        <div class="chiprow">${list.map(a => `<button class="chip" style="--c:${colorOf(a.id)}" data-ans="${a.act}|${a.id}">${esc(a.data.call || a.name)}</button>`).join('') || '<span class="muted">아직 없어요 — 앱 “오늘 수업” 탭에서 적어요</span>'}</div>
+        <div class="chiprow">${list.map(a => `<button class="chip" style="--c:${colorOf(a.id)}" data-ans="${a.act}|${a.id}">${esc(a.data.call || a.name)}${a.act === 's3_story' ? ` ${(a.data.parts || []).length ? '✎' : ''}${(a.data.parts || []).filter(p => p.img && p.img.url).map(() => '▣').join('')}` : ''}</button>`).join('') || '<span class="muted">아직 없어요 — 앱 “오늘 수업” 탭에서 적어요</span>'}</div>
         ${missing.length && list.length ? `<p class="miss">아직: ${missing.map(m => esc(m.name)).join(', ')}</p>` : ''}`;
     });
     $$('[data-wall]').forEach(el => {
@@ -309,11 +315,14 @@
           return `<div class="ivr"><button class="ivn" data-iv="${m.id}" title="눌러서 내용 보기">${esc(m.name)}</button><span class="ivbar"><i style="width:${w}%;background:${colorOf(m.id)}"></i></span><span class="ivc">${x.answers}번${x.sum ? ' <b>✓정리</b>' : ''}</span></div>`; }).join('')}</div>`;
     });
     names = ok.map(m => m.name);
+    if (typeof renderProg === 'function') { renderProg(); renderSpots(); }
     drawMap();
   }
   let liveOk = false;
   async function poll() {
-    try { LIVE = Object.assign({ iv: [] }, await api('class_live', { acts: Object.keys(ACT) })); liveOk = true; render(); $('#liveDot').className = 'on'; $('#liveDot').title = '실시간 연결됨'; }
+    try { LIVE = Object.assign({ iv: [] }, await api('class_live', { acts: Object.keys(ACT) }));
+      if (document.querySelector('[data-prog="base"], [data-prog="book"], [data-spot="book"]') && slides.some(x => x.querySelector('[data-prog="base"], [data-prog="book"], [data-spot="book"]'))) {
+        try { (await api('board')).rows.forEach(r => BOARD.set(r.id, r)); } catch { /* 현황 없이 진행 */ } } liveOk = true; render(); $('#liveDot').className = 'on'; $('#liveDot').title = '실시간 연결됨'; }
     catch (err) { $('#liveDot').className = 'off'; $('#liveDot').title = '연결 끊김: ' + err.message; }
   }
   (async () => {
@@ -349,6 +358,151 @@
     };
     $('#r2Reset').onclick = () => { used2 = []; $('#r2Name').textContent = '?'; $('#r2Msg').textContent = ''; };
   }
+
+  // ---- 3회차: 상상 카드 · 수필 낭독 · 상상 이야기 보기 ----
+  const IM3 = ['작은 기차역이 하나 더 생긴다면', '밀양강 물고기가 말을 한다면', '상상창고에 밤마다 불이 켜진다면', '오래된 우체통이 답장을 보낸다면', '고양이가 길 안내를 맡는다면', '사라진 가게가 하룻밤 문을 연다면', '하루 동안 눈이 펑펑 내린다면', '30년 뒤 아이가 나를 찾아온다면'];
+  const c3 = $('#cards3');
+  if (c3) {
+    const draw3 = () => { c3.innerHTML = IM3.map((c, i) => `<button class="mc" aria-label="상상 카드 ${i + 1}"><span class="back">만약에 ${i + 1}</span><span class="front">${c}</span></button>`).join(''); };
+    draw3(); c3.onclick = e => { const b = e.target.closest('.mc'); if (b) b.classList.toggle('open'); };
+    $('#c3Draw').onclick = () => { const cl = [...c3.querySelectorAll('.mc:not(.open)')]; c3.querySelectorAll('.pick').forEach(x => x.classList.remove('pick')); if (cl.length) cl[Math.floor(Math.random() * cl.length)].classList.add('open', 'pick'); };
+    $('#c3All').onclick = () => c3.querySelectorAll('.mc').forEach(b => b.classList.add('open'));
+    $('#c3Reset').onclick = draw3;
+  }
+  function roulette(pre, pool, onPick) {
+    const spin = $(`#${pre}Spin`); if (!spin) return;
+    let used = [];
+    spin.onclick = () => {
+      const all = pool(), left = all.filter(m => !used.includes(m.id));
+      if (!all.length) { $(`#${pre}Name`).textContent = '?'; onPick(null, '아직 뽑을 사람이 없어요.'); return; }
+      if (!left.length) { onPick(null, '모든 분이 발표했어요. "처음으로"를 누르면 다시 뽑아요.'); return; }
+      const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches; let n = 0; const end = reduce ? 0 : 14; spin.disabled = true;
+      const step = () => { const m = left[Math.floor(Math.random() * left.length)]; $(`#${pre}Name`).textContent = m.name;
+        if (n++ < end) { setTimeout(step, 60 + n * 12); return; } used.push(m.id); spin.disabled = false; onPick(m); };
+      step();
+    };
+    $(`#${pre}Reset`).onclick = () => { used = []; $(`#${pre}Name`).textContent = '?'; onPick(null, ''); };
+  }
+  roulette('r3a', () => LIVE.members.filter(m => m.approved), async (m, msg) => {
+    const out = $('#r3aMsg'); if (!m) { out.textContent = msg || ''; return; }
+    out.innerHTML = '<p class="muted">수필을 불러오는 중…</p>';
+    try { const D = (await api('note_get', { kind: 'interview', id: m.id })).data || {};
+      out.innerHTML = D.essay ? `<h3>${esc(D.essayTitle || '제목 없음')}</h3>${esc(D.essay.split(/\n\s*\n/).slice(0, 2).join('\n\n')).replace(/\n/g, '<br>')} …` : '<span class="muted">아직 수필이 없어요 — 인터뷰에서 기억에 남는 이야기를 말로 들려주세요</span>';
+    } catch (err) { out.textContent = err.message; }
+  });
+  roulette('r3b', () => LIVE.answers.filter(a => a.act === 's3_story' && (a.data.parts || []).length).map(a => ({ id: a.id, name: a.name })), (m, msg) => {
+    const out = $('#r3bView'); if (!m) { out.innerHTML = `<p class="muted" style="font-size:30px">${esc(msg || '이름을 뽑으면 그분의 상상 그림 이야기가 떠요.')}</p>`; return; }
+    const a = LIVE.answers.find(x => x.act === 's3_story' && x.id === m.id); const p = (a.data.parts || [])[0] || {};
+    out.innerHTML = `${p.img && p.img.url ? `<img src="${esc(p.img.url)}" alt="">` : '<div class="noimg">그림 아직</div>'}<div><h3>${esc(a.data.title || '제목 없음')}</h3><div class="tx">${esc(p.text || '').replace(/\n/g, '<br>')}</div>
+      ${(a.data.parts || []).length > 1 ? `<button class="btn" data-ans="s3_story|${a.id}" style="margin-top:14px">다음 장면까지 보기</button>` : ''}</div>`;
+  });
+
+  // ---- 3회차: 진행 현황(data-prog)과 공유발표 스포트라이트(data-spot) ----
+  const BOARD = new Map();
+  const storyOf = id => ((LIVE.answers.find(x => x.act === 's3_story' && x.id === id) || {}).data) || {};
+  const seedN = d => ['who', 'where', 'what', 'ending'].filter(k => String(d[k] || '').trim()).length;
+  const PRED = {
+    base: m => ((BOARD.get(m.id) || {}).npages || 0) >= 3,
+    idea: m => { const d = storyOf(m.id); return !!(String(d.card || '').trim() || String(d.idea || '').trim()); },
+    seed: m => seedN(storyOf(m.id)) >= 2,
+    text: m => (storyOf(m.id).parts || []).length > 0,
+    img: m => (storyOf(m.id).parts || []).some(p => p.img && p.img.url),
+    book: m => ((BOARD.get(m.id) || {}).npages || 0) > 0
+  };
+  const PLABEL = { base: '자기소개·수필을 넣은 분 (3쪽 이상)', idea: '카드를 고른 분', seed: '씨앗을 두 칸 이상 채운 분', text: '초안을 받은 분', img: '그림을 만든 분', book: '책에 쪽이 있는 분' };
+  const approved = () => LIVE.members.filter(m => m.approved);
+  function renderProg() {
+    $$('[data-prog]').forEach(el => {
+      const t = el.dataset.prog, ms = approved(), done = ms.filter(PRED[t]);
+      el.innerHTML = `<p>${PLABEL[t]} <b>${done.length}</b> / ${ms.length}명</p>
+        <div class="chiprow">${ms.map(m => `<span class="chip ${PRED[t](m) ? 'done' : 'not'}" style="--c:${colorOf(m.id)}">${PRED[t](m) ? '✓ ' : ''}${esc(m.name)}</span>`).join('')}</div>`;
+    });
+  }
+  const SPOT = new Map(); // wrap → { sel, used:Set, page }
+  const nl = s => esc(s || '').replace(/\n/g, '<br>');
+  const nameOf = id => (LIVE.members.find(m => m.id === id) || {}).name || '';
+  function spotOverview(t) {
+    const ms = approved().filter(PRED[t]);
+    if (!ms.length) return '<p class="muted" style="font-size:30px">아직 올라온 것이 없어요. 앱에서 저장하면 여기에 바로 떠요.</p>';
+    if (t === 'img') return `<div class="sv-grid">${ms.map(m => { const p = (storyOf(m.id).parts || []).find(x => x.img && x.img.url); return `<button data-spick="${m.id}"><img src="${esc(p.img.thumb || p.img.url)}" alt="">${esc(m.name)}</button>`; }).join('')}</div>`;
+    return `<div class="sv-wall">${ms.map(m => { const d = storyOf(m.id), b = BOARD.get(m.id) || {};
+      const line = t === 'idea' ? `${d.card || ''}${d.idea ? ` — ${d.idea}` : ''}` : t === 'seed' ? [d.who, d.where, d.what].filter(Boolean).join(' · ') : t === 'text' ? `「${d.title || '제목 없음'}」` : `${b.npages || 0}쪽 · 그림 ${b.imgs || 0}장`;
+      return `<button data-spick="${m.id}" style="--c:${colorOf(m.id)}"><b>${esc(m.name)}</b>${esc(line).slice(0, 90)}</button>`; }).join('')}</div>`;
+  }
+  async function spotView(wrap, t, id) {
+    const v = wrap.querySelector('.spot-v'), d = storyOf(id), name = nameOf(id);
+    if (t === 'idea') v.innerHTML = `<p class="sv-k">${esc(name)}님의 소재</p><p class="sv-card">${esc(d.card || '카드 없음')}</p><p class="sv-idea">${nl(d.idea)}</p>`;
+    if (t === 'seed') v.innerHTML = `<p class="sv-k">${esc(name)}님의 이야기 씨앗 · ${esc(d.card || '')}</p><div class="sv-seed">${[['누가', d.who], ['가곡동 어디서', d.where], ['무슨 일이', d.what], ['어떻게 끝날까', d.ending]].map(([k, x]) => `<div><b>${k}</b><span>${nl(x) || '—'}</span></div>`).join('')}</div>`;
+    if (t === 'text') v.innerHTML = `<p class="sv-k">${esc(name)}님의 상상 이야기</p><h3 class="sv-title">${esc(d.title || '제목 없음')}</h3>${(d.parts || []).map((p, i) => `${i ? '<hr style="border:0;border-top:2px dashed #DCE3D3;margin:18px 0">' : ''}<p class="sv-text">${nl(p.text)}</p>`).join('')}`;
+    if (t === 'img') v.innerHTML = `<p class="sv-k">${esc(name)}님 · 「${esc(d.title || '')}」</p><div class="sv-imgs">${(d.parts || []).filter(p => p.img && p.img.url).map(p => `<img src="${esc(p.img.url)}" alt="">`).join('')}</div>`;
+    if (t === 'book') {
+      v.innerHTML = '<p class="muted" style="font-size:28px">책을 불러오는 중…</p>';
+      try {
+        const w = (await api('work_get', { track: 'story', id })).work; const st = SPOT.get(wrap); st.pages = w.pages || []; st.page = 0; st.bookTitle = w.title;
+        drawBookV(wrap, name);
+      } catch (err) { v.innerHTML = `<p class="muted">${esc(err.message)}</p>`; }
+    }
+  }
+  const FULL = ['full', 'fullSafe', 'fullText'];
+  function pageBox(p, n) {
+    if (!p) return '';
+    const im = (p.imgs || []).find(x => x && x.url) || ((p.els || []).find(e => e.img && e.img.url) || {}).img;
+    if (FULL.includes(p.tpl) && im) return `<button class="bkv-pg" data-bz="${n - 1}" aria-label="${n}쪽 크게 보기"><img class="full" src="${esc(im.url)}" alt=""><span class="pn">${n}</span></button>`;
+    const txt = pageText(p);
+    return `<button class="bkv-pg" data-bz="${n - 1}" aria-label="${n}쪽 크게 보기">${im ? `<img class="sm" src="${esc(im.thumb || im.url)}" alt="">` : ''}${p.head ? `<h4>${esc(p.head)}</h4>` : ''}<p>${esc(txt)}</p><span class="pn">${n}</span></button>`;
+  }
+  const pageText = p => p.text || (p.els || []).filter(e => e.t === 'text').map(e => e.text).join('\n\n');
+  const pageImg = p => (p.imgs || []).find(x => x && x.url) || ((p.els || []).find(e => e.img && e.img.url) || {}).img;
+  // 한 쪽 크게 보기 — 프로젝터에서 글씨가 읽히도록
+  function zoomBox(p, n) {
+    const im = pageImg(p), txt = pageText(p);
+    return `<div class="bkv-z" data-bz="-1" title="누르면 두 쪽 보기로">${im ? `<img src="${esc(im.url)}" alt="">` : ''}<div>${p.head ? `<h4>${esc(p.head)}</h4>` : ''}${txt ? `<p>${esc(txt)}</p>` : ''}<p class="muted" style="font-size:22px;margin-top:14px">${n}쪽 · 누르면 두 쪽 보기로</p></div></div>`;
+  }
+  function drawBookV(wrap, name) {
+    const st = SPOT.get(wrap), v = wrap.querySelector('.spot-v'), P = st.pages, i = st.page;
+    if (st.zoom != null && P[st.zoom]) {
+      const z = st.zoom;
+      v.innerHTML = `<div class="bkv"><div class="bkv-nav" style="justify-content:space-between"><span class="sv-k" style="margin:0">${esc(name)}님의 책 · ${z + 1} / ${P.length}쪽</span><span style="display:flex;gap:10px"><button class="btn" data-bzs="-1" ${z > 0 ? '' : 'disabled'}>◀ 앞 쪽</button><button class="btn" data-bz="-1">두 쪽 보기</button><button class="btn" data-bzs="1" ${z + 1 < P.length ? '' : 'disabled'}>뒤 쪽 ▶</button></span></div>${zoomBox(P[z], z + 1)}</div>`;
+      v.scrollTop = 0; return;
+    }
+    v.innerHTML = `<div class="bkv"><p class="sv-k" style="text-align:center">${esc(name)}님의 책 · ${P.length}쪽</p>
+      <div class="bkv-sp">${P.length ? pageBox(P[i], i + 1) + pageBox(P[i + 1], i + 2) : '<p class="muted">아직 쪽이 없어요.</p>'}</div>
+      <div class="bkv-nav"><button class="btn" data-bk="-2" ${i > 0 ? '' : 'disabled'}>◀ 이전</button><span>${P.length ? `${i + 1}${P[i + 1] ? `–${i + 2}` : ''} / ${P.length}쪽` : ''}</span><button class="btn" data-bk="2" ${i + 2 < P.length ? '' : 'disabled'}>다음 ▶</button></div>${P.length ? '<p class="bkv-hint">쪽을 누르면 크게 보여요</p>' : ''}</div>`;
+  }
+  function renderSpots() {
+    $$('.spotwrap').forEach(wrap => {
+      const t = wrap.dataset.spot;
+      if (!SPOT.has(wrap)) {
+        SPOT.set(wrap, { sel: null, used: new Set() });
+        wrap.innerHTML = `<div class="spot-l"><div class="rname spot-name">?</div><div class="row"><button class="btn main" data-spin>이름 뽑기</button><button class="btn" data-sall>모두 보기</button></div>
+          <p class="muted" style="margin:0;font-size:22px">이름을 눌러도 바로 보여요</p><div class="chiprow spot-list"></div></div><div class="spot-v"></div>`;
+      }
+      const st = SPOT.get(wrap), ms = approved().filter(PRED[t]);
+      wrap.querySelector('.spot-list').innerHTML = ms.map(m => `<button class="chip ${st.used.has(m.id) ? 'used' : ''} ${st.sel === m.id ? 'cur' : ''}" style="--c:${colorOf(m.id)}" data-spick="${m.id}">${st.used.has(m.id) ? '✓ ' : ''}${esc(m.name)}</button>`).join('') || '<span class="muted">아직 없어요</span>';
+      if (!st.sel) wrap.querySelector('.spot-v').innerHTML = spotOverview(t);
+    });
+  }
+  function spotPick(wrap, id) {
+    const st = SPOT.get(wrap); st.sel = id; st.used.add(id); st.zoom = null;
+    wrap.querySelector('.spot-name').textContent = nameOf(id); renderSpots(); spotView(wrap, wrap.dataset.spot, id);
+  }
+  document.addEventListener('click', e => {
+    const wrap = e.target.closest('.spotwrap'); if (!wrap) return;
+    const pk = e.target.closest('[data-spick]'); if (pk) { spotPick(wrap, pk.dataset.spick); return; }
+    if (e.target.closest('[data-sall]')) { const st = SPOT.get(wrap); st.sel = null; wrap.querySelector('.spot-name').textContent = '?'; renderSpots(); return; }
+    const bz = e.target.closest('[data-bz]'); if (bz) { const st = SPOT.get(wrap), k = +bz.dataset.bz; st.zoom = k < 0 ? null : k; if (k >= 0) st.page = k - (k % 2); drawBookV(wrap, nameOf(st.sel)); return; }
+    const bzs = e.target.closest('[data-bzs]'); if (bzs) { const st = SPOT.get(wrap); st.zoom = Math.min(st.pages.length - 1, Math.max(0, st.zoom + +bzs.dataset.bzs)); st.page = st.zoom - (st.zoom % 2); drawBookV(wrap, nameOf(st.sel)); return; }
+    const bk = e.target.closest('[data-bk]'); if (bk) { const st = SPOT.get(wrap); st.page = Math.max(0, st.page + +bk.dataset.bk); drawBookV(wrap, nameOf(st.sel)); return; }
+    const sp = e.target.closest('[data-spin]');
+    if (sp) {
+      const st = SPOT.get(wrap), ms = approved().filter(PRED[wrap.dataset.spot]); let left = ms.filter(m => !st.used.has(m.id));
+      if (!ms.length) return; if (!left.length) { st.used.clear(); left = ms; }
+      const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches; let n = 0; const end = reduce ? 0 : 14; sp.disabled = true;
+      const step = () => { const m = left[Math.floor(Math.random() * left.length)]; wrap.querySelector('.spot-name').textContent = m.name;
+        if (n++ < end) { setTimeout(step, 60 + n * 12); return; } sp.disabled = false; spotPick(wrap, m.id); };
+      step();
+    }
+  });
 
   applySettings();
   const h = /^#s(\d+)$/.exec(location.hash);
