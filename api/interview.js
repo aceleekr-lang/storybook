@@ -139,6 +139,6 @@ module.exports = async function handler(req, res) {
     if (e && e.status === 401) { res.status(500).json({ error: 'AI 키(ANTHROPIC_API_KEY)가 맞지 않아요. 운영자에게 알려 주세요.' }); return; }
     if (/credit|balance|billing/i.test(m)) { res.status(500).json({ error: 'AI 이용 금액이 부족해요. 운영자에게 알려 주세요.' }); return; }
     if (e && e.busy) { res.status(503).json({ error: 'AI 서버가 지금 붐벼요. 10초쯤 뒤 다시 눌러 주세요. 적은 내용은 그대로 남아 있어요.' }); return; }
-    res.status(502).json({ error: 'AI가 답을 마무리하지 못했어요. 한 번 더 눌러 주세요. 적은 내용은 그대로 남아 있어요.' });
+    res.status(502).json({ error: `AI가 답을 마무리하지 못했어요. 한 번 더 눌러 주세요. 적은 내용은 그대로 남아 있어요. (확인용: ${(e && e.status) || ''} ${m.slice(0, 70)})` });
   }
 };

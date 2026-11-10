@@ -645,7 +645,7 @@
           <label class="f" for="sIdea">이 카드로 떠오른 한 줄 <small>발표할 때 소개해요</small>${inp('sIdea', 'idea', '예) 할아버지가 우체통에서 30년 전 엄마 편지를 찾는다', true)}</label></section>
         <section class="card"><h2 class="h2">② 이야기 씨앗 <small>한두 칸만 적어도 돼요</small></h2>
           <label class="f" for="sWho">누가 (주인공)${inp('sWho', 'who', '예) 우체부 할아버지, 길고양이 누리')}</label>
-          <label class="f" for="sWhere">가곡동 어디서${inp('sWhere', 'where', '예) 밀양역 뒤 골목, 상상창고 앞 마당')}</label>
+          <label class="f" for="sWhere">어디서${inp('sWhere', 'where', '예) 밀양역 뒤 골목, 상상창고 앞 마당')}</label>
           <label class="f" for="sWhat">무슨 일이 생길까${inp('sWhat', 'what', '예) 우체통에서 30년 전 편지가 나온다', true)}</label>
           <label class="f" for="sEnd">어떻게 끝날까${inp('sEnd', 'ending', '예) 편지 주인을 찾아 동네 사람들이 모인다', true)}</label>
           <div class="f"><span>분량</span><div class="seg-btns" role="group">

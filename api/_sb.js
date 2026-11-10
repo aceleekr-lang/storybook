@@ -50,16 +50,21 @@ async function call(payload) {
   }
 }
 
-// 결과를 정해진 모양(JSON)으로 받기 — 도구 입력으로 받으므로 따옴표·줄바꿈 때문에 깨지지 않음
+// 결과를 정해진 모양으로 받기 — 태그 형식(<title>…</title>)이라 따옴표·줄바꿈이 많아도 깨지지 않음
+const untag = (raw, k) => { const m = raw.match(new RegExp(`<${k}>([\\s\\S]*?)</${k}>`)); return m ? m[1].trim() : null; };
 async function claudeJSON({ system, messages, max_tokens = 3000, schema }) {
-  const props = {}; Object.entries(schema).forEach(([k, v]) => { props[k] = v === 'scenes' ? { type: 'array', items: { type: 'object', properties: { text: { type: 'string' }, pic: { type: 'string' } }, required: ['text', 'pic'] } } : { type: 'string' }; });
-  const j = await call({ max_tokens, system: system + '\n\n결과는 반드시 answer 도구로 제출합니다.', messages,
-    tools: [{ name: 'answer', description: '결과 제출', input_schema: { type: 'object', properties: props, required: Object.keys(props) } }],
-    tool_choice: { type: 'tool', name: 'answer' } });
-  const use = (j.content || []).find(c => c.type === 'tool_use');
-  if (use && use.input && typeof use.input === 'object') return use.input;
-  const text = (j.content || []).filter(c => c.type === 'text').map(c => c.text).join('');
-  return parseJSON(text);
+  const keys = Object.keys(schema);
+  const fmt = keys.map(k => schema[k] === 'scenes' ? '<scene><text>장면 글</text><pic>그림 묘사</pic></scene>  (장면 수만큼 반복)' : `<${k}>…</${k}>`).join('\n');
+  const sys = system + `\n\n출력 형식(가장 중요): 위에 적힌 JSON 형식은 쓰지 말고 아래 태그 형식으로만 출력합니다. 태그 밖에는 아무것도 쓰지 않습니다. 글 안의 따옴표·줄바꿈은 그대로 씁니다.\n${fmt}`;
+  const j = await call({ max_tokens, system: sys, messages });
+  const raw = (j.content || []).filter(c => c.type === 'text').map(c => c.text).join('');
+  const out = {}; let found = 0;
+  keys.forEach(k => {
+    if (schema[k] === 'scenes') { out[k] = [...raw.matchAll(/<scene>([\s\S]*?)(?:<\/scene>|$)/g)].map(m => ({ text: untag(m[1], 'text') || '', pic: untag(m[1], 'pic') || '' })).filter(x => x.text); if (out[k].length) found++; }
+    else { const v = untag(raw, k); out[k] = v || ''; if (v) found++; }
+  });
+  if (found) return out;
+  try { return parseJSON(raw); } catch { const e = new Error(`형식 없음 (${j.stop_reason || ''}) ${raw.slice(0, 40)}`); e.status = 'fmt'; throw e; }
 }
 
 async function claude({ system, messages, max_tokens = 1500 }) {

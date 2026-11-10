@@ -436,7 +436,7 @@
   async function spotView(wrap, t, id) {
     const v = wrap.querySelector('.spot-v'), d = storyOf(id), name = nameOf(id);
     if (t === 'idea') v.innerHTML = `<p class="sv-k">${esc(name)}님의 소재</p><p class="sv-card">${esc(d.card || '카드 없음')}</p><p class="sv-idea">${nl(d.idea)}</p>`;
-    if (t === 'seed') v.innerHTML = `<p class="sv-k">${esc(name)}님의 이야기 씨앗 · ${esc(d.card || '')}</p><div class="sv-seed">${[['누가', d.who], ['가곡동 어디서', d.where], ['무슨 일이', d.what], ['어떻게 끝날까', d.ending]].map(([k, x]) => `<div><b>${k}</b><span>${nl(x) || '—'}</span></div>`).join('')}</div>`;
+    if (t === 'seed') v.innerHTML = `<p class="sv-k">${esc(name)}님의 이야기 씨앗 · ${esc(d.card || '')}</p><div class="sv-seed">${[['누가', d.who], ['어디서', d.where], ['무슨 일이', d.what], ['어떻게 끝날까', d.ending]].map(([k, x]) => `<div><b>${k}</b><span>${nl(x) || '—'}</span></div>`).join('')}</div>`;
     if (t === 'text') v.innerHTML = `<p class="sv-k">${esc(name)}님의 상상 이야기</p><h3 class="sv-title">${esc(d.title || '제목 없음')}</h3>${(d.parts || []).map((p, i) => `${i ? '<hr style="border:0;border-top:2px dashed #DCE3D3;margin:18px 0">' : ''}<p class="sv-text">${nl(p.text)}</p>`).join('')}`;
     if (t === 'img') v.innerHTML = `<p class="sv-k">${esc(name)}님 · 「${esc(d.title || '')}」</p><div class="sv-imgs">${(d.parts || []).filter(p => p.img && p.img.url).map(p => `<img src="${esc(p.img.url)}" alt="">`).join('')}</div>`;
     if (t === 'book') {
