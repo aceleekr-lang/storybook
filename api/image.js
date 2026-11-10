@@ -38,23 +38,32 @@ module.exports = async function handler(req, res) {
     if (gi) Object.assign(req1, { quality: IMAGE_QUALITY || 'medium', output_format: 'jpeg', output_compression: 90 });
     else Object.assign(req1, { response_format: 'b64_json', quality: 'standard' });
     try {
-      const r = await fetch('https://api.openai.com/v1/images/generations', {
-        method: 'POST', headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, 'Content-Type': 'application/json' }, body: JSON.stringify(req1)
-      });
-      const j = await r.json().catch(() => ({}));
+      let r, j;
+      for (let k = 0; k < 4; k++) {
+        r = await fetch('https://api.openai.com/v1/images/generations', {
+          method: 'POST', headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, 'Content-Type': 'application/json' }, body: JSON.stringify(req1)
+        });
+        j = await r.json().catch(() => ({}));
+        // 이 모델이 모르는 설정이 있으면 그 설정만 빼고 다시 (예: Unknown parameter: 'output_compression')
+        const e = (j && j.error) || {}, bad = e.param || ((String(e.message || '').match(/parameter:? ?'([\w.]+)'/i) || [])[1]);
+        if (!r.ok && r.status === 400 && /unknown_parameter|unsupported|not supported|unrecognized/i.test(`${e.code} ${e.type} ${e.message}`) && bad && bad in req1 && !['model', 'prompt'].includes(bad)) {
+          console.error('image param dropped', model, bad); delete req1[bad]; continue;
+        }
+        break;
+      }
       if (!r.ok) {
         const code = (j && j.error && (j.error.code || j.error.type)) || '', msg = (j && j.error && j.error.message) || `status ${r.status}`;
         console.error('image error', model, r.status, code, msg);
         return { err: { status: r.status, code, msg } };
       }
       const b64 = j && j.data && j.data[0] && j.data[0].b64_json;
-      return b64 ? { b64, mime: gi ? 'image/jpeg' : 'image/png' } : { err: { status: 0, code: 'empty', msg: '빈 응답' } };
+      return b64 ? { b64, mime: req1.output_format === 'jpeg' ? 'image/jpeg' : 'image/png' } : { err: { status: 0, code: 'empty', msg: '빈 응답' } };
     } catch (e) { console.error('image error', model, e && e.message); return { err: { status: 0, code: 'net', msg: String(e && e.message) } }; }
   }
   const model = IMAGE_MODEL || 'gpt-image-1';
   let out = await draw(model);
   // 조직 인증 전이거나 이 모델을 쓸 수 없는 계정이면 dall-e-3로 한 번 더
-  if (out.err && /^gpt-image/.test(model) && (out.err.status === 403 || out.err.status === 404 || /verif|not have access|model_not_found|does not exist/i.test(out.err.code + out.err.msg))) out = await draw('dall-e-3');
+  if (out.err && model !== 'dall-e-3' && (out.err.status === 403 || out.err.status === 404 || /verif|not have access|model_not_found|does not exist|unknown_parameter|invalid_value/i.test(out.err.code + out.err.msg))) out = await draw('dall-e-3');
   if (out.err) {
     const { status, code, msg } = out.err;
     if (/moderation|safety|content_policy/i.test(code + msg)) { res.status(400).json({ error: '이 설명으로는 그림을 만들 수 없어요. 표현을 조금 바꿔서 다시 해 주세요.' }); return; }
@@ -62,7 +71,7 @@ module.exports = async function handler(req, res) {
     if (/billing|quota|insufficient/i.test(code + msg)) { res.status(500).json({ error: 'OpenAI 이용 금액(크레딧)이 부족해요. 운영자에게 알려 주세요.' }); return; }
     if (status === 429) { res.status(503).json({ error: 'AI 그림 서버가 바빠요. 30초쯤 뒤 다시 눌러 주세요.' }); return; }
     if (/verif/i.test(msg)) { res.status(500).json({ error: 'OpenAI 조직 인증(Verify Organization)이 아직 끝나지 않았어요. 운영자에게 알려 주세요.' }); return; }
-    res.status(502).json({ error: `AI 그림을 만들지 못했어요. 조금 뒤 다시 눌러 주세요. (확인용: ${status} ${String(code || msg).slice(0, 70)})` }); return;
+    res.status(502).json({ error: `AI 그림을 만들지 못했어요. 조금 뒤 다시 눌러 주세요. (확인용: ${status} ${String(code).slice(0, 30)} ${String(msg).slice(0, 80)})` }); return;
   }
   const b64 = out.b64;
 
