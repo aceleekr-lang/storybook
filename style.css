@@ -700,6 +700,10 @@ td.t-title { max-width: 16em; overflow: hidden; text-overflow: ellipsis; }
 /* 오늘 수업 */
 .view-today { max-width: 760px; margin: 0 auto; }
 .chip-b.on { background: var(--story); color: #fff; }
+.imcats .chip-b { border-style: solid; background: #F3EEE4; color: var(--ink); border-color: var(--line); } .imcats .chip-b.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+.imcats [data-imrand] { border-style: dashed; border-color: var(--story); color: var(--story); background: #fff; }
+.imcards { margin-top: .6rem; } .imcards:empty { display: none; }
+.imnow { margin: .6rem 0 0; padding: .5rem .8rem; background: #FFF6E3; border-radius: 10px; }
 .chips-r { border: 0; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: .4rem; }
 .chips-r legend { font-weight: 600; margin-bottom: .4rem; }
 .chip-r { display: inline-flex; align-items: center; gap: .35rem; border: 2px solid var(--line); border-radius: 999px; padding: .4rem .9rem; min-height: 44px; background: #fff; font-weight: 400; cursor: pointer; }

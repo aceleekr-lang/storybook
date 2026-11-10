@@ -1,6 +1,6 @@
 // AI 인터뷰 · 정리 · 12쪽 흐름 제안 서버 함수 (Vercel) — Claude
 // 필요한 환경변수: ANTHROPIC_API_KEY, SUPABASE_URL, SUPABASE_ANON_KEY  (선택: INTERVIEW_MODEL, 기본 claude-sonnet-5-5)
-const { readBody, makeRpc, check, claude, parseJSON } = require('./_sb');
+const { readBody, makeRpc, check, claude, claudeJSON } = require('./_sb');
 
 const ASK = `당신은 밀양시 가곡동 상상창고에서 열리는 「AI를 활용한 가곡동 이야기 책 만들기」 수업의 인터뷰 진행자입니다.
 참여자는 여러 나이대의 성인이고, 가곡동(또는 자기가 살아온 동네)의 장소·사람·일상에 얽힌 기억으로 12쪽짜리 이야기책을 만듭니다.
@@ -99,42 +99,46 @@ module.exports = async function handler(req, res) {
     } else if (mode === 'sum') {
       if (msgs.filter(m => m.r === 'me').length < 1) { res.status(400).json({ error: '정리할 대답이 아직 없어요.' }); return; }
       const talk = msgs.map(m => `${m.r === 'ai' ? '질문' : '대답'}: ${m.t}`).join('\n');
-      const j = parseJSON(await claude({ system: SUM, messages: [{ role: 'user', content: `<인터뷰>\n${talk}\n</인터뷰>` }], max_tokens: 3000 }));
+      const j = await claudeJSON({ system: SUM, messages: [{ role: 'user', content: `<인터뷰>\n${talk}\n</인터뷰>` }], max_tokens: 3000, schema: { summary: 1, topic: 1, reader: 1, message: 1, missing: 1 } });
       out = { summary: clip(j.summary, 3000), topic: clip(j.topic, 200), reader: clip(j.reader, 200), message: clip(j.message, 300), missing: clip(j.missing, 300) };
     } else if (mode === 'fit') {
       const essay = clip(body.essay, 4000), max = Math.max(300, Math.min(1800, +body.max || 600));
       if (essay.replace(/\s/g, '').length < 50) { res.status(400).json({ error: '줄일 글이 없어요.' }); return; }
-      const j = parseJSON(await claude({ system: FIT(max), messages: [{ role: 'user', content: `<수필>\n${essay}\n</수필>` }], max_tokens: 3000 }));
+      const j = await claudeJSON({ system: FIT(max), messages: [{ role: 'user', content: `<수필>\n${essay}\n</수필>` }], max_tokens: 3000, schema: { essay: 1 } });
       out = { essay: clip(j.essay, 3000) };
     } else if (mode === 'story') {
       const n = +body.scenes === 2 ? 2 : 1;
       const set = [['상상 카드', body.card], ['떠오른 한 줄', body.idea], ['주인공', body.who], ['장소', body.where], ['무슨 일', body.what], ['어떻게 끝날까', body.ending]]
         .filter(([, x]) => String(x || '').trim()).map(([k, x]) => `${k}: ${clip(x, 300)}`).join('\n');
       if (set.replace(/\s/g, '').length < 6) { res.status(400).json({ error: '상상 카드를 고르거나 이야기 씨앗을 한 칸 이상 적어 주세요.' }); return; }
-      const j = parseJSON(await claude({ system: STORY(n), messages: [{ role: 'user', content: set }], max_tokens: 4000 }));
+      const j = await claudeJSON({ system: STORY(n), messages: [{ role: 'user', content: set }], max_tokens: 4000, schema: { title: 1, scenes: 'scenes' } });
       out = { title: clip(j.title, 40), scenes: (Array.isArray(j.scenes) ? j.scenes : []).slice(0, n).map(x => ({ text: clip(x && x.text, 1200), pic: clip(x && x.pic, 300) })) };
     } else if (mode === 'intro') {
       const memo = clip(body.memo, 1200);
       if (memo.replace(/\s/g, '').length < 4) { res.status(400).json({ error: '자기소개 메모가 없어요. "오늘 수업" 1회차 자기소개를 먼저 적어 주세요.' }); return; }
-      const j = parseJSON(await claude({ system: INTRO, messages: [{ role: 'user', content: memo }], max_tokens: 2000 }));
+      const j = await claudeJSON({ system: INTRO, messages: [{ role: 'user', content: memo }], max_tokens: 2000, schema: { text: 1 } });
       out = { text: clip(j.text, 800) };
     } else if (mode === 'essay') {
       if (msgs.filter(m => m.r === 'me').length < 2) { res.status(400).json({ error: '수필을 쓰려면 인터뷰에서 조금 더 이야기해 주세요.' }); return; }
       const talk = msgs.map(m => `${m.r === 'ai' ? '질문' : '대답'}: ${m.t}`).join('\n');
       const extra = [body.topic && `주제: ${clip(body.topic, 300)}`, body.message && `핵심 메시지: ${clip(body.message, 300)}`].filter(Boolean).join('\n');
-      const j = parseJSON(await claude({ system: ESSAY, messages: [{ role: 'user', content: `${extra ? extra + '\n\n' : ''}<인터뷰>\n${talk}\n</인터뷰>` }], max_tokens: 4000 }));
+      const j = await claudeJSON({ system: ESSAY, messages: [{ role: 'user', content: `${extra ? extra + '\n\n' : ''}<인터뷰>\n${talk}\n</인터뷰>` }], max_tokens: 4000, schema: { title: 1, essay: 1 } });
       out = { title: clip(j.title, 60), essay: clip(j.essay, 3000) };
     } else {
       const info = `주제: ${clip(body.topic, 300)}\n독자: ${clip(body.reader, 200)}\n핵심 메시지: ${clip(body.message, 300)}\n\n<글감>\n${clip(body.summary, 4000)}\n</글감>`;
       if ([body.topic, body.reader, body.message, body.summary].join('').replace(/\s/g, '').length < 4) { res.status(400).json({ error: '주제·독자·핵심 메시지나 인터뷰 정리를 먼저 적어 주세요.' }); return; }
-      const j = parseJSON(await claude({ system: PLAN, messages: [{ role: 'user', content: info }], max_tokens: 3000 }));
+      const j = await claudeJSON({ system: PLAN, messages: [{ role: 'user', content: info }], max_tokens: 3000, schema: { title: 1, cover: 1, scenes: 'scenes' } });
       const scenes = (Array.isArray(j.scenes) ? j.scenes : []).slice(0, 5).map(s => ({ text: clip(s && s.text, 200), pic: clip(s && s.pic, 250) }));
       out = { title: clip(j.title, 60), cover: clip(j.cover, 250), scenes };
     }
     try { await rpc('ai_use', { kind: 'interview' }); } catch { /* 셈 실패는 결과에 영향 없음 */ }
     res.status(200).json(out);
   } catch (e) {
-    console.error('interview error', e && e.message);
-    res.status(502).json({ error: 'AI가 잠깐 답하지 못했어요. 조금 뒤 다시 눌러 주세요.' });
+    console.error('interview error', mode, e && e.status, e && e.message);
+    const m = String((e && e.message) || '');
+    if (e && e.status === 401) { res.status(500).json({ error: 'AI 키(ANTHROPIC_API_KEY)가 맞지 않아요. 운영자에게 알려 주세요.' }); return; }
+    if (/credit|balance|billing/i.test(m)) { res.status(500).json({ error: 'AI 이용 금액이 부족해요. 운영자에게 알려 주세요.' }); return; }
+    if (e && e.busy) { res.status(503).json({ error: 'AI 서버가 지금 붐벼요. 10초쯤 뒤 다시 눌러 주세요. 적은 내용은 그대로 남아 있어요.' }); return; }
+    res.status(502).json({ error: 'AI가 답을 마무리하지 못했어요. 한 번 더 눌러 주세요. 적은 내용은 그대로 남아 있어요.' });
   }
 };

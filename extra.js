@@ -13,7 +13,7 @@
     try { r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: S.token, ...body }) }); }
     catch { throw new Error('인터넷 연결을 확인해 주세요.'); }
     let j = {};
-    try { j = await r.json(); } catch { throw new Error(`서버가 답하지 않아요 (${r.status}). 운영자에게 알려 주세요.`); }
+    try { j = await r.json(); } catch { throw new Error(r.status === 504 ? 'AI가 글을 쓰는 데 시간이 오래 걸렸어요. 한 번 더 눌러 주세요. 적은 내용은 그대로 남아 있어요.' : `서버가 답하지 않아요 (${r.status}). 잠시 뒤 다시 해 보고, 계속되면 운영자에게 알려 주세요.`); }
     if (j.error === 'auth') { signOutLocal(); throw new Error('다시 로그인해 주세요.'); }
     if (!r.ok || j.error) throw new Error(j.error || `오류가 났어요 (${r.status}).`);
     return j;
@@ -608,8 +608,10 @@
   };
 
   // ---------- 상상 그림 이야기 (3회차): 세로 그림 1쪽 + 글 1쪽 = 한 장면, 1~2장면 ----------
-  const IMAGINE = ['만약에 가곡동 골목에 작은 기차역이 하나 더 생긴다면', '만약에 밀양강 물고기가 말을 한다면', '만약에 상상창고에 밤마다 불이 켜진다면', '만약에 오래된 우체통이 답장을 보낸다면',
-    '만약에 고양이가 가곡동 길 안내를 맡는다면', '만약에 사라진 가게가 하룻밤만 다시 문을 연다면', '만약에 가곡동에 하루 동안 눈이 펑펑 내린다면', '만약에 30년 뒤 가곡동 아이가 나를 찾아온다면'];
+  // 상상 카드 — 6가지 종류 × 6장. 글자만 고치면 앱과 수업 화면(class.js IM_CATS)에 반영돼요.
+  const IM_CATS = [{"name": "말하는 사물·동물", "cards": ["만약에 밀양강 물고기가 말을 한다면", "만약에 오래된 우체통이 답장을 보낸다면", "만약에 고양이가 가곡동 길 안내를 맡는다면", "만약에 밀양역 시계가 지나간 이야기를 들려준다면", "만약에 골목 담벼락 그림이 밤마다 움직인다면", "만약에 우리 집 장독대가 할머니의 비밀을 안다면"]}, {"name": "시간 여행", "cards": ["만약에 30년 뒤 가곡동 아이가 나를 찾아온다면", "만약에 열 살의 내가 오늘 가곡동에 나타난다면", "만약에 기차에서 내리니 50년 전 밀양역이라면", "만약에 낡은 사진 속으로 걸어 들어갈 수 있다면", "만약에 100년 뒤 누군가 내 이야기책을 발견한다면", "만약에 가곡동의 하루가 거꾸로 흐른다면"]}, {"name": "사라진 것이 돌아온다면", "cards": ["만약에 사라진 가게가 하룻밤만 다시 문을 연다면", "만약에 문 닫은 옛 극장에 다시 영화가 걸린다면", "만약에 헐린 옛집이 하룻밤 다시 생겨난다면", "만약에 그리운 사람이 장날에 한 번 들른다면", "만약에 어릴 적 잃어버린 물건이 택배로 돌아온다면", "만약에 골목에서 옛 동무들 목소리가 들린다면"]}, {"name": "날씨·계절의 마법", "cards": ["만약에 가곡동에 하루 동안 눈이 펑펑 내린다면", "만약에 비가 올 때마다 옛 노래가 들린다면", "만약에 밀양강이 하룻밤 꽁꽁 얼어 길이 된다면", "만약에 한여름에 벚꽃이 다시 핀다면", "만약에 안개 속에서 또 다른 가곡동이 나타난다면", "만약에 보름달이 상상창고 지붕에 내려앉는다면"]}, {"name": "동네의 비밀", "cards": ["만약에 상상창고에 밤마다 불이 켜진다면", "만약에 가곡동 골목에 작은 기차역이 하나 더 생긴다면", "만약에 철길 아래에 비밀 통로가 있다면", "만약에 동네 큰 나무가 마을 일을 모두 기억한다면", "만약에 골목마다 숨은 문이 하나씩 있다면", "만약에 밤 12시에만 열리는 시장이 있다면"]}, {"name": "내가 주인공", "cards": ["만약에 내가 하루 동안 가곡동 동장이 된다면", "만약에 내가 투명인간이 되어 동네를 걷는다면", "만약에 내가 가곡동을 지키는 수호신이라면", "만약에 내가 이웃의 소원을 하나씩 들어준다면", "만약에 내가 새가 되어 가곡동을 내려다본다면", "만약에 내 꿈이 이웃들의 꿈과 이어진다면"]}];
+  const IMAGINE = IM_CATS.flatMap(c => c.cards);
+  let imCat = -1; // 지금 펼친 종류
   const STORY_ACT = 's3_story';
   const PICFR = [132, 205]; // 세로 그림 칸(안전영역 안에 가득) 비율
   VIEWS.story = async v => {
@@ -622,12 +624,23 @@
     const later = () => { clearTimeout(saveT); S.dirty = true; svState('고치는 중…'); saveT = setTimeout(save, 800); };
     S.flush = async () => { if (saveT || S.dirty) await save(); };
     const inp = (id, k, ph, area) => area ? `<textarea id="${id}" rows="2" data-k="${k}" placeholder="${esc(ph)}">${esc(D[k])}</textarea>` : `<input id="${id}" data-k="${k}" value="${esc(D[k])}" placeholder="${esc(ph)}">`;
+    if (imCat < 0 && D.card) imCat = IM_CATS.findIndex(x => x.cards.includes(D.card));
+    const drawCards = () => {
+      $$('[data-imcat]', v).forEach(b => b.classList.toggle('on', +b.dataset.imcat === imCat));
+      const box = $('.imcards', v); if (!box) return;
+      box.innerHTML = imCat < 0 ? '' : IM_CATS[imCat].cards.map(c => `<button class="chip-b ${D.card === c ? 'on' : ''}" data-card="${esc(c)}">${esc(c)}</button>`).join('');
+      const now = $('.imnow', v); const html = D.card && IMAGINE.includes(D.card) ? `고른 카드 · <b>${esc(D.card)}</b>` : '';
+      if (now) { now.innerHTML = html; now.hidden = !html; } else if (html) box.insertAdjacentHTML('afterend', `<p class="imnow">${html}</p>`);
+    };
     const draw = () => {
       v.innerHTML = `<h1 class="h">상상 그림 이야기</h1>
         <p class="lead">가곡동을 배경으로 새로운 상상 이야기를 지어요. <b>세로 그림 한 쪽 + 글 한 쪽</b>이 한 장면이에요. AI가 초안을 쓰면 내 말로 고치고, 장면마다 그림을 만들어요.</p>
         <p class="svstate" aria-live="polite"></p>
         <section class="card"><h2 class="h2">① 상상 카드 고르기</h2>
-          <div class="chips">${IMAGINE.map(c => `<button class="chip-b ${D.card === c ? 'on' : ''}" data-card="${esc(c)}">${esc(c)}</button>`).join('')}</div>
+          <p class="muted" style="margin:.2rem 0 .5rem">상상의 종류를 먼저 고르고, 마음에 드는 카드를 눌러요.</p>
+          <div class="chips imcats" role="group" aria-label="상상의 종류">${IM_CATS.map((c, i) => `<button class="chip-b ${i === imCat ? 'on' : ''}" data-imcat="${i}">${esc(c.name)}</button>`).join('')}<button class="chip-b" data-imrand>아무거나 뽑기</button></div>
+          <div class="chips imcards">${imCat < 0 ? '' : IM_CATS[imCat].cards.map(c => `<button class="chip-b ${D.card === c ? 'on' : ''}" data-card="${esc(c)}">${esc(c)}</button>`).join('')}</div>
+          ${D.card && IMAGINE.includes(D.card) ? `<p class="imnow">고른 카드 · <b>${esc(D.card)}</b></p>` : ''}
           <label class="f" for="sCard">직접 적기<input id="sCard" data-k="card" value="${esc(IMAGINE.includes(D.card) ? '' : D.card)}" placeholder="예) 만약에 가곡동 담벼락 그림이 밤마다 움직인다면"></label>
           <label class="f" for="sIdea">이 카드로 떠오른 한 줄 <small>발표할 때 소개해요</small>${inp('sIdea', 'idea', '예) 할아버지가 우체통에서 30년 전 엄마 편지를 찾는다', true)}</label></section>
         <section class="card"><h2 class="h2">② 이야기 씨앗 <small>한두 칸만 적어도 돼요</small></h2>
@@ -666,7 +679,9 @@
       later(); if (k === 'title' || e.target.dataset.pk === 'text') checkFits();
     };
     v.onclick = async e => {
-      const c = e.target.closest('[data-card]'); if (c) { D.card = c.dataset.card; $('#sCard', v).value = ''; $$('[data-card]', v).forEach(b => b.classList.toggle('on', b === c)); later(); return; }
+      const ic = e.target.closest('[data-imcat]'); if (ic) { imCat = +ic.dataset.imcat === imCat ? -1 : +ic.dataset.imcat; drawCards(); return; }
+      if (e.target.closest('[data-imrand]')) { const all = IMAGINE.filter(x => x !== D.card); D.card = all[Math.floor(Math.random() * all.length)]; imCat = IM_CATS.findIndex(x => x.cards.includes(D.card)); $('#sCard', v).value = ''; drawCards(); later(); return; }
+      const c = e.target.closest('[data-card]'); if (c) { D.card = c.dataset.card; $('#sCard', v).value = ''; drawCards(); later(); return; }
       const sc = e.target.closest('[data-sc]'); if (sc) { D.scenes = +sc.dataset.sc; $$('[data-sc]', v).forEach(b => b.setAttribute('aria-pressed', b === sc)); later(); return; }
       const dr = e.target.closest('#sDraft');
       if (dr) {

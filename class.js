@@ -360,12 +360,16 @@
   }
 
   // ---- 3회차: 상상 카드 · 수필 낭독 · 상상 이야기 보기 ----
-  const IM3 = ['작은 기차역이 하나 더 생긴다면', '밀양강 물고기가 말을 한다면', '상상창고에 밤마다 불이 켜진다면', '오래된 우체통이 답장을 보낸다면', '고양이가 길 안내를 맡는다면', '사라진 가게가 하룻밤 문을 연다면', '하루 동안 눈이 펑펑 내린다면', '30년 뒤 아이가 나를 찾아온다면'];
+  // 상상 카드 6종 — 앱(extra.js IM_CATS)과 같은 내용. 카드를 누를 때마다 그 종류의 다른 상상이 나와요.
+  const IM_CATS = [{"name": "말하는 사물·동물", "cards": ["밀양강 물고기가 말을 한다면", "오래된 우체통이 답장을 보낸다면", "고양이가 가곡동 길 안내를 맡는다면", "밀양역 시계가 지나간 이야기를 들려준다면", "골목 담벼락 그림이 밤마다 움직인다면", "우리 집 장독대가 할머니의 비밀을 안다면"]}, {"name": "시간 여행", "cards": ["30년 뒤 가곡동 아이가 나를 찾아온다면", "열 살의 내가 오늘 가곡동에 나타난다면", "기차에서 내리니 50년 전 밀양역이라면", "낡은 사진 속으로 걸어 들어갈 수 있다면", "100년 뒤 누군가 내 이야기책을 발견한다면", "가곡동의 하루가 거꾸로 흐른다면"]}, {"name": "사라진 것이 돌아온다면", "cards": ["사라진 가게가 하룻밤만 다시 문을 연다면", "문 닫은 옛 극장에 다시 영화가 걸린다면", "헐린 옛집이 하룻밤 다시 생겨난다면", "그리운 사람이 장날에 한 번 들른다면", "어릴 적 잃어버린 물건이 택배로 돌아온다면", "골목에서 옛 동무들 목소리가 들린다면"]}, {"name": "날씨·계절의 마법", "cards": ["가곡동에 하루 동안 눈이 펑펑 내린다면", "비가 올 때마다 옛 노래가 들린다면", "밀양강이 하룻밤 꽁꽁 얼어 길이 된다면", "한여름에 벚꽃이 다시 핀다면", "안개 속에서 또 다른 가곡동이 나타난다면", "보름달이 상상창고 지붕에 내려앉는다면"]}, {"name": "동네의 비밀", "cards": ["상상창고에 밤마다 불이 켜진다면", "가곡동 골목에 작은 기차역이 하나 더 생긴다면", "철길 아래에 비밀 통로가 있다면", "동네 큰 나무가 마을 일을 모두 기억한다면", "골목마다 숨은 문이 하나씩 있다면", "밤 12시에만 열리는 시장이 있다면"]}, {"name": "내가 주인공", "cards": ["내가 하루 동안 가곡동 동장이 된다면", "내가 투명인간이 되어 동네를 걷는다면", "내가 가곡동을 지키는 수호신이라면", "내가 이웃의 소원을 하나씩 들어준다면", "내가 새가 되어 가곡동을 내려다본다면", "내 꿈이 이웃들의 꿈과 이어진다면"]}];
   const c3 = $('#cards3');
   if (c3) {
-    const draw3 = () => { c3.innerHTML = IM3.map((c, i) => `<button class="mc" aria-label="상상 카드 ${i + 1}"><span class="back">만약에 ${i + 1}</span><span class="front">${c}</span></button>`).join(''); };
-    draw3(); c3.onclick = e => { const b = e.target.closest('.mc'); if (b) b.classList.toggle('open'); };
-    $('#c3Draw').onclick = () => { const cl = [...c3.querySelectorAll('.mc:not(.open)')]; c3.querySelectorAll('.pick').forEach(x => x.classList.remove('pick')); if (cl.length) cl[Math.floor(Math.random() * cl.length)].classList.add('open', 'pick'); };
+    const seen = IM_CATS.map(() => []);
+    const roll = i => { const c = IM_CATS[i].cards, left = c.filter(x => !seen[i].includes(x)); if (!left.length) seen[i].length = 0; const pick = (left.length ? left : c)[Math.floor(Math.random() * (left.length || c.length))]; seen[i].push(pick); return pick; };
+    const draw3 = () => { seen.forEach(x => x.length = 0); c3.innerHTML = IM_CATS.map((c, i) => `<button class="mc" data-i="${i}" aria-label="${c.name} 카드"><span class="back">${c.name}</span><span class="front"><small>${c.name}</small>만약에 ${roll(i)}</span></button>`).join(''); };
+    const flip = b => { if (b.classList.contains('open')) { b.querySelector('.front').innerHTML = `<small>${IM_CATS[+b.dataset.i].name}</small>만약에 ${roll(+b.dataset.i)}`; b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop'); } else b.classList.add('open'); };
+    draw3(); c3.onclick = e => { const b = e.target.closest('.mc'); if (b) flip(b); };
+    $('#c3Draw').onclick = () => { const all = [...c3.querySelectorAll('.mc')]; c3.querySelectorAll('.pick').forEach(x => x.classList.remove('pick')); const b = all[Math.floor(Math.random() * all.length)]; flip(b); b.classList.add('pick'); };
     $('#c3All').onclick = () => c3.querySelectorAll('.mc').forEach(b => b.classList.add('open'));
     $('#c3Reset').onclick = draw3;
   }
