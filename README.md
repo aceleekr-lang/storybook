@@ -28,7 +28,7 @@
    - `OPENAI_API_KEY` — OpenAI API 키 (platform.openai.com → API keys에서 발급, 결제 수단 등록·충전 필요)
    - `SUPABASE_URL` — `https://snaldhxucwsaifqrccih.supabase.co`
    - `SUPABASE_ANON_KEY` — `config.js`의 publishable 키와 같은 값
-   - (선택) `IMAGE_MODEL` 기본 `gpt-image-1` · `IMAGE_QUALITY` 기본 `medium`(low/medium/high) · `PROOF_MODEL`·`INTERVIEW_MODEL` 기본 `claude-sonnet-5-5`
+   - (선택) `IMAGE_MODEL` 비우면 `gpt-image-2` → `gpt-image-1` → `gpt-image-1-mini` 순서로 시도 · `IMAGE_QUALITY` 기본 `medium`(low/medium/high) · `PROOF_MODEL`·`INTERVIEW_MODEL` 기본 `claude-sonnet-5-5`
    배포 뒤에 환경변수를 바꿨다면 Deployments → Redeploy를 한 번 눌러야 반영됩니다.
    OpenAI는 처음 쓰는 조직이면 이미지 모델을 쓰기 전에 조직 인증(Verify Organization)을 요구할 수 있어요. 그림이 안 만들어지면 OpenAI 콘솔 Settings → Organization에서 확인해 주세요.
 5. 배포 주소에서 운영자로 로그인 → 오른쪽 위 이름 → **비밀번호 바꾸기**.
