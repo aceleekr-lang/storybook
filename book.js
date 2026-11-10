@@ -184,7 +184,7 @@
       w._start = list.length + 1;
       list.push({ special: 'opener', folio: false, html: `<div class="op">
           <div class="op-bar"></div>
-          <h2 class="op-t">${esc(w.title || '제목 없음')}</h2>
+          <h2 class="op-t">${esc(w.title || '작품집 제목 미정')}</h2>
           <p class="op-by">글·그림 ${esc(by)}</p>
           ${String(w.intro || '').trim() ? `<p class="op-intro">${esc(w.intro)}</p>` : ''}</div>` });
       (w.pages || []).forEach((pg, pi) => list.push({ pg, wi, pi }));
@@ -202,7 +202,7 @@
     }
     const toc = list.find(x => x.special === 'toc');
     if (toc) toc.html = `<div class="ct"><h2 class="bk-h">차례</h2><ol class="toc ${works.length > 16 ? 'dense' : ''}">${works.map(w =>
-      `<li><span class="tt">${esc(w.title || '제목 없음')}</span><span class="ta">${esc(w.pen_name || w.name)}</span><span class="tp">${w._start}</span></li>`).join('')}</ol></div>`;
+      `<li><span class="tt">${esc(w.title || '작품집 제목 미정')}</span><span class="ta">${esc(w.pen_name || w.name)}</span><span class="tp">${w._start}</span></li>`).join('')}</ol></div>`;
     return list.map((x, i) => {
       const n = i + 1;
       if (x.pg) return pageHTML(x.pg, { track, n, color, extra: `w${x.wi}` }).replace('<section ', `<section data-w="${x.wi}" data-p="${x.pi}" `);
@@ -285,8 +285,8 @@
       check: pagesEl => {
         const warn = [];
         works.forEach((w, wi) => {
-          const who = `${w.pen_name || w.name}「${w.title || '제목 없음'}」`;
-          if (!String(w.title || '').trim()) warn.push(['bad', `${w.pen_name || w.name}: 작품 제목이 없어요.`]);
+          const who = `${w.pen_name || w.name}「${w.title || '작품집 제목 미정'}」`;
+          if (!String(w.title || '').trim()) warn.push(['warn', `${w.pen_name || w.name}: 작품집 제목이 아직 없어요 — 교정 회차(6·7회차)에 정해요.`]);
           (w.pages || []).forEach((pg, pi) => {
             const t = tpl(pg.tpl), el = pagesEl.querySelector(`section[data-w="${wi}"][data-p="${pi}"]`);
             const where = `${who} ${pi + 1}번째 쪽`;

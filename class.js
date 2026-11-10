@@ -406,14 +406,14 @@
   const storyOf = id => ((LIVE.answers.find(x => x.act === 's3_story' && x.id === id) || {}).data) || {};
   const seedN = d => ['who', 'where', 'what', 'ending'].filter(k => String(d[k] || '').trim()).length;
   const PRED = {
-    base: m => ((BOARD.get(m.id) || {}).npages || 0) >= 3,
+    base: m => ((BOARD.get(m.id) || {}).npages || 0) >= 2,
     idea: m => { const d = storyOf(m.id); return !!(String(d.card || '').trim() || String(d.idea || '').trim()); },
     seed: m => seedN(storyOf(m.id)) >= 2,
     text: m => (storyOf(m.id).parts || []).length > 0,
     img: m => (storyOf(m.id).parts || []).some(p => p.img && p.img.url),
     book: m => ((BOARD.get(m.id) || {}).npages || 0) > 0
   };
-  const PLABEL = { base: '자기소개·수필을 넣은 분 (3쪽 이상)', idea: '카드를 고른 분', seed: '씨앗을 두 칸 이상 채운 분', text: '초안을 받은 분', img: '그림을 만든 분', book: '책에 쪽이 있는 분' };
+  const PLABEL = { base: '작가 소개·수필을 넣은 분 (2쪽 이상)', idea: '카드를 고른 분', seed: '씨앗을 두 칸 이상 채운 분', text: '초안을 받은 분', img: '그림을 만든 분', book: '책에 쪽이 있는 분' };
   const approved = () => LIVE.members.filter(m => m.approved);
   function renderProg() {
     $$('[data-prog]').forEach(el => {

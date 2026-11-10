@@ -595,14 +595,14 @@
         ${other ? `<div class="row between"><p class="who">${esc(ownerName)}님의 ${esc(cur.name)}</p><button class="btn btn-small" id="back">현황판으로</button></div>`
           : tracks.length > 1 ? `<div class="spines" role="group" aria-label="과정 고르기">${tracks.map(t => spine(t, t === track)).join('')}</div>` : ''}
         <div class="meta">
-          <label class="f f-title">작품 제목<input id="wTitle" class="serif big" value="${esc(W.title)}" placeholder="내 이야기의 제목"></label>
+          <label class="f f-title">작품집 제목 <small>내 글 모두를 묶는 제목 · 교정 회차(6·7회차)에 정해요</small><input id="wTitle" class="serif big" value="${esc(W.title)}" placeholder="예) 가곡동에서 꺼낸 나의 이야기"></label>
           <label class="f">책에 실릴 이름 <small>비우면 ${esc(ownerName)}</small><input id="wPen" value="${esc(W.pen_name)}" placeholder="${esc(ownerName)}"></label>
           <label class="f f-intro">나를 소개하는 한마디 <small>작품 첫 쪽에 들어가요</small><input id="wIntro" value="${esc(W.intro)}" placeholder="예) 가곡동에서 서른 해를 산 마을작가"></label>
         </div>
       </div>
       <div class="w-main" style="--tc:${cur.color}">
         <aside class="strip" aria-label="쪽 모음"><ol id="thumbs"></ol>
-          <div class="strip-btns"><button class="btn btn-small" id="addPage">쪽 더하기</button><button class="btn btn-small btn-soft" id="recall">수업 되짚기</button><button class="btn btn-small btn-soft" id="plan12">12쪽 구성표</button><button class="btn btn-small btn-main" id="compose">책 차례 맞추기</button><button class="btn btn-small btn-soft" id="pageMgr">쪽 정리</button></div></aside>
+          <div class="strip-btns"><button class="btn btn-small" id="addPage">쪽 더하기</button><button class="btn btn-small btn-soft" id="recall">수업 되짚기</button><button class="btn btn-small btn-soft" id="plan12">내 책 구성표</button><button class="btn btn-small btn-main" id="compose">책 차례 맞추기</button><button class="btn btn-small btn-soft" id="pageMgr">쪽 정리</button></div></aside>
         <section class="stage" aria-label="쪽 미리보기">
           <div class="stage-bar" id="stageBar"></div>
           <div id="stage"></div><div id="overBar" class="over-bar" hidden></div></section>
@@ -723,7 +723,7 @@
         <p class="muted">${esc(cur.name)} 수업에서 한 일을 떠올려 보세요. 질문 하나를 누르면 그 질문이 적힌 새 쪽이 생겨요.</p>
         ${recallHTML()}
         <p><button class="btn btn-main" id="compose2">자기소개 · 수필 · 상상 그림 이야기로 책 차례 맞추기</button></p>
-        <p><button class="btn" id="plan12b">12쪽 구성표로 시작하기</button></p>
+        <p><button class="btn" id="plan12b">내 책 구성표 보기</button></p>
         <p class="muted">질문 없이 시작하려면 <button class="linkbtn" data-act="blank">빈 쪽 하나 만들기</button></p></div>`;
     const recallHTML = () => `<ol class="sessions">${cur.sessions.map(s => `<li class="sess">
         <p class="s-when">${s.no}회차${s.day ? `, ${esc(s.day)}` : ''}</p><h3>${esc(s.title)}</h3><p class="s-did">${esc(s.did)}</p>
@@ -895,7 +895,7 @@
         return;
       }
       if (e.target.closest('#compose, #compose2')) {
-        const pages = await window.YSX.openCompose({ owner: other ? arg.id : '' });
+        const pages = await window.YSX.openCompose({ owner: other ? arg.id : '', name: other ? ownerName : '' });
         if (!pages) return;
         let mode = 'add';
         if (W.pages.length) {
@@ -908,11 +908,9 @@
         return;
       }
       if (e.target.closest('#plan12, #plan12b')) {
-        const pages = await window.YSX.openPlan({ owner: other ? arg.id : '', track, title: W.title });
+        const pages = await window.YSX.openBookPlan(W.pages);
         if (!pages) return;
-        const at = W.pages.length;
-        if (at && !(await ask(`지금 쓴 ${at}쪽 뒤에 12쪽을 붙일까요?`, '이미 쓴 쪽은 그대로 남아요. 필요 없는 쪽은 나중에 지우면 돼요.', '뒤에 붙이기'))) return;
-        W.pages.splice(at, 0, ...pages); sel = at; selEl = -1; changed(); drawAll(); toast('12쪽을 만들었어요. 쪽마다 적힌 장면을 보고 채워 주세요.');
+        W.pages.splice(0, W.pages.length, ...pages); sel = 0; selEl = -1; changed(); drawAll(); toast('구성표대로 반영했어요.');
         return;
       }
       const q = e.target.closest('[data-q]');
@@ -941,7 +939,11 @@
       const gn = e.target.closest('[data-gen]');
       if (gn) {
         const i = +gn.dataset.gen;
-        const im = await window.YSX.genImage({ owner: other ? arg.id : '', frame: Book.tpl(pg.tpl).fr[i], scene: pg.scene || '', text: [pg.head, pg.text].filter(Boolean).join('\n'), hint: pg.hint || '' });
+        // 같은 작품(수필·이야기 등)으로 이어진 쪽들의 글 전체
+        const so = window.YSX.secOf, sc = so(pg); let a0 = sel, b0 = sel;
+        if (sc !== 'etc') { while (a0 > 0 && so(W.pages[a0 - 1]) === sc) a0--; while (b0 < W.pages.length - 1 && so(W.pages[b0 + 1]) === sc) b0++; }
+        const whole = W.pages.slice(a0, b0 + 1).map(x => [x.head, x.text].filter(Boolean).join('\n')).filter(Boolean).join('\n\n');
+        const im = await window.YSX.genImage({ owner: other ? arg.id : '', frame: Book.tpl(pg.tpl).fr[i], scene: pg.scene || '', text: [pg.head, pg.text].filter(Boolean).join('\n'), whole, hint: pg.hint || '' });
         if (im) setImg(i, im);
         return;
       }
@@ -1047,7 +1049,7 @@
       v.innerHTML = `<h1 class="h">현황판</h1>
         <div class="spines" role="group" aria-label="과정 고르기">${TRACKS.map(t => spine(t, t === tr)).join('')}</div>
         <p class="lead">${esc(CUR[tr].name)} ${list.length}명 중 ${done}명이 "책에 실어도 좋아요"를 눌렀어요. 이름을 누르면 그분의 책을 함께 고칠 수 있어요.</p>
-        ${list.length ? `<div class="tbl-wrap"><table><thead><tr><th>이름</th><th>작품 제목</th><th>쪽</th><th>글자</th><th>그림</th><th>요청</th><th>책에 싣기</th><th>마지막 저장</th></tr></thead>
+        ${list.length ? `<div class="tbl-wrap"><table><thead><tr><th>이름</th><th>작품집 제목</th><th>쪽</th><th>글자</th><th>그림</th><th>요청</th><th>책에 싣기</th><th>마지막 저장</th></tr></thead>
         <tbody>${list.map(r => `<tr><td><button class="linkbtn" data-open="${r.id}">${esc(r.name)}</button></td><td class="t-title">${esc(r.title || '')}</td>
           <td class="num">${r.npages || 0}</td><td class="num">${(r.chars || 0).toLocaleString()}</td><td class="num">${r.imgs || 0}</td><td>${r.open_notes ? `<span class="chip chip-wait">${r.open_notes}건</span>` : ''}</td>
           <td>${r.confirmed ? '<span class="chip chip-ok">좋아요</span>' : r.npages ? '<span class="chip">쓰는 중</span>' : '<span class="chip chip-wait">시작 전</span>'}</td>
@@ -1083,7 +1085,7 @@
         <h2 class="h2">싣는 순서</h2>
         ${order.length ? `<ol class="order">${order.map((id, i) => { const w = byId[id]; return `<li class="${exclude.has(id) ? 'off' : ''}">
           <span class="ord-btns"><button data-mv="-1" data-i="${i}" ${i === 0 ? 'disabled' : ''} aria-label="위로">▲</button><button data-mv="1" data-i="${i}" ${i === order.length - 1 ? 'disabled' : ''} aria-label="아래로">▼</button></span>
-          <label class="check"><input type="checkbox" data-inc="${id}" ${exclude.has(id) ? '' : 'checked'}> <b>${esc(w.pen_name || w.name)}</b>「${esc(w.title || '제목 없음')}」</label>
+          <label class="check"><input type="checkbox" data-inc="${id}" ${exclude.has(id) ? '' : 'checked'}> <b>${esc(w.pen_name || w.name)}</b>「${esc(w.title || '작품집 제목 미정')}」</label>
           <span class="ord-st">${w.npages}쪽, ${Number(w.chars).toLocaleString()}자, 그림 ${w.imgs}장 · ${w.confirmed_at ? '실어도 좋아요' : '아직 확인 전'}</span></li>`; }).join('')}</ol>`
           : '<p class="muted">아직 한 쪽이라도 쓴 참여자가 없어요.</p>'}
         <h2 class="h2">책 정보</h2>

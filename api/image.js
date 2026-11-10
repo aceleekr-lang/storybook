@@ -16,7 +16,7 @@ module.exports = async function handler(req, res) {
   const style = String(body.style || '').trim().slice(0, 1200);
   const size = SIZE[body.aspect] || SIZE.portrait;
   if (scene.replace(/\s/g, '').length < 4) { res.status(400).json({ error: '어떤 장면인지 조금 더 적어 주세요.' }); return; }
-  if (scene.length > 1200) { res.status(400).json({ error: '장면 설명은 1,200자까지 적을 수 있어요.' }); return; }
+  if (scene.length > 3000) { res.status(400).json({ error: '장면 설명은 3,000자까지 적을 수 있어요.' }); return; }
 
   // 1) 로그인·동의·오늘 남은 장수 확인 (차감은 성공했을 때만)
   const rpc = makeRpc(body.token);
@@ -27,42 +27,47 @@ module.exports = async function handler(req, res) {
   const prompt = [
     '한국 경상남도 밀양시 가곡동 주민들이 함께 만드는 동네 이야기책의 삽화.',
     style ? `그림체: ${style}` : '그림체: 따뜻하고 부드러운 그림책 삽화.',
-    `장면: ${scene}`,
+    scene.length > 500 ? `장면: 아래 글에서 가장 잘 어울리는 한 장면을 골라 그린다.\n<글>\n${scene}\n</글>` : `장면: ${scene}`,
     '지킬 것: 그림 안에 글자·숫자·간판 글씨·말풍선·서명·워터마크를 넣지 않는다. 실존 유명인의 얼굴을 그리지 않는다. 책 한 쪽에 들어갈 한 장면만 그린다.'
   ].join('\n\n');
-  const model = IMAGE_MODEL || 'gpt-image-1';
-  const req1 = { model, prompt, size, n: 1 };
-  if (/^gpt-image/.test(model)) Object.assign(req1, { quality: IMAGE_QUALITY || 'medium', output_format: 'jpeg', output_compression: 90 });
-  else req1.response_format = 'b64_json';
-
-  let b64;
-  try {
-    const r = await fetch('https://api.openai.com/v1/images/generations', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(req1)
-    });
-    const j = await r.json();
-    if (!r.ok) {
-      const code = (j && j.error && (j.error.code || j.error.type)) || '';
-      const msg = (j && j.error && j.error.message) || `status ${r.status}`;
-      console.error('image error', r.status, code, msg);
-      if (/moderation|safety|content_policy/i.test(code + msg)) {
-        res.status(400).json({ error: '이 설명으로는 그림을 만들 수 없어요. 표현을 조금 바꿔서 다시 해 주세요.' }); return;
+  // 한 모델로 그려 보기. 실패하면 { err } 를 돌려줌
+  const DALLE = { portrait: '1024x1792', landscape: '1792x1024', square: '1024x1024' };
+  async function draw(model) {
+    const gi = /^gpt-image/.test(model);
+    const req1 = { model, prompt, n: 1, size: gi ? size : (DALLE[body.aspect] || DALLE.portrait) };
+    if (gi) Object.assign(req1, { quality: IMAGE_QUALITY || 'medium', output_format: 'jpeg', output_compression: 90 });
+    else Object.assign(req1, { response_format: 'b64_json', quality: 'standard' });
+    try {
+      const r = await fetch('https://api.openai.com/v1/images/generations', {
+        method: 'POST', headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, 'Content-Type': 'application/json' }, body: JSON.stringify(req1)
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        const code = (j && j.error && (j.error.code || j.error.type)) || '', msg = (j && j.error && j.error.message) || `status ${r.status}`;
+        console.error('image error', model, r.status, code, msg);
+        return { err: { status: r.status, code, msg } };
       }
-      if (r.status === 401) { res.status(500).json({ error: 'AI 그림 키(OPENAI_API_KEY)가 맞지 않아요. 운영자에게 알려 주세요.' }); return; }
-      if (r.status === 429) { res.status(503).json({ error: 'AI 그림 서버가 바쁘거나 이용 금액이 부족해요. 잠시 뒤 다시 해 보고, 계속 안 되면 운영자에게 알려 주세요.' }); return; }
-      throw new Error(msg);
-    }
-    b64 = j && j.data && j.data[0] && j.data[0].b64_json;
-    if (!b64) throw new Error('빈 응답');
-  } catch (e) {
-    console.error('image error', e && e.message);
-    res.status(502).json({ error: 'AI 그림을 만들지 못했어요. 조금 뒤 다시 눌러 주세요.' }); return;
+      const b64 = j && j.data && j.data[0] && j.data[0].b64_json;
+      return b64 ? { b64, mime: gi ? 'image/jpeg' : 'image/png' } : { err: { status: 0, code: 'empty', msg: '빈 응답' } };
+    } catch (e) { console.error('image error', model, e && e.message); return { err: { status: 0, code: 'net', msg: String(e && e.message) } }; }
   }
+  const model = IMAGE_MODEL || 'gpt-image-1';
+  let out = await draw(model);
+  // 조직 인증 전이거나 이 모델을 쓸 수 없는 계정이면 dall-e-3로 한 번 더
+  if (out.err && /^gpt-image/.test(model) && (out.err.status === 403 || out.err.status === 404 || /verif|not have access|model_not_found|does not exist/i.test(out.err.code + out.err.msg))) out = await draw('dall-e-3');
+  if (out.err) {
+    const { status, code, msg } = out.err;
+    if (/moderation|safety|content_policy/i.test(code + msg)) { res.status(400).json({ error: '이 설명으로는 그림을 만들 수 없어요. 표현을 조금 바꿔서 다시 해 주세요.' }); return; }
+    if (status === 401) { res.status(500).json({ error: 'AI 그림 키(OPENAI_API_KEY)가 맞지 않아요. 운영자에게 알려 주세요.' }); return; }
+    if (/billing|quota|insufficient/i.test(code + msg)) { res.status(500).json({ error: 'OpenAI 이용 금액(크레딧)이 부족해요. 운영자에게 알려 주세요.' }); return; }
+    if (status === 429) { res.status(503).json({ error: 'AI 그림 서버가 바빠요. 30초쯤 뒤 다시 눌러 주세요.' }); return; }
+    if (/verif/i.test(msg)) { res.status(500).json({ error: 'OpenAI 조직 인증(Verify Organization)이 아직 끝나지 않았어요. 운영자에게 알려 주세요.' }); return; }
+    res.status(502).json({ error: `AI 그림을 만들지 못했어요. 조금 뒤 다시 눌러 주세요. (확인용: ${status} ${String(code || msg).slice(0, 70)})` }); return;
+  }
+  const b64 = out.b64;
 
   // 3) 성공했을 때만 1장 셈
   let used = null;
   try { used = (await rpc('ai_use', { kind: 'image' })).used; } catch { /* 셈 실패는 결과에 영향 없음 */ }
-  res.status(200).json({ b64, mime: /^gpt-image/.test(model) ? 'image/jpeg' : 'image/png', used, left: q.left == null ? null : Math.max(0, q.left - 1) });
+  res.status(200).json({ b64, mime: out.mime, used, left: q.left == null ? null : Math.max(0, q.left - 1) });
 };
