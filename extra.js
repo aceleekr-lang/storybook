@@ -24,11 +24,23 @@
   const aspectOf = fr => { if (!fr) return 'portrait'; const r = fr[0] / fr[1]; return r > 1.15 ? 'landscape' : r < 0.87 ? 'portrait' : 'square'; };
   const b64Blob = (b64, type) => { const bin = atob(b64); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new Blob([u], { type }); };
   // 그림을 만들어 저장소에 올리고 사진첩에 담음 → {url, thumb, w, h, fit}
-  async function makeImage({ prompt, style, aspect, owner }) {
-    const j = await post(C.imageUrl || '/api/image', { prompt, style, aspect, owner: owner || '' });
+  async function makeImage({ prompt, style, aspect, owner, mode = 'draw', src = '' }) {
+    const j = await post(C.imageUrl || '/api/image', { prompt, style, aspect, owner: owner || '', mode, src });
     const im = { ...(await store(await encode(b64Blob(j.b64, j.mime || 'image/jpeg')))), fit: 'cover', ai: true };
     await toAlbum(im, owner || '');
     return { im, left: j.left };
+  }
+
+  // 사진(파일·주소·캔버스) → 긴 변 max px JPEG data:URL (AI 서버로 보낼 크기)
+  async function toData(srcAny, max = 1536) {
+    let bmp;
+    if (srcAny instanceof HTMLCanvasElement) bmp = srcAny;
+    else if (typeof srcAny === 'string') { const r = await fetch(srcAny); if (!r.ok) throw new Error('사진을 불러오지 못했어요.'); bmp = await createImageBitmap(await r.blob()); }
+    else bmp = await createImageBitmap(srcAny);
+    const k = Math.min(1, max / Math.max(bmp.width, bmp.height)), cv = document.createElement('canvas');
+    cv.width = Math.round(bmp.width * k); cv.height = Math.round(bmp.height * k);
+    const cx = cv.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height); cx.drawImage(bmp, 0, 0, cv.width, cv.height);
+    return cv.toDataURL('image/jpeg', 0.88);
   }
 
   // 그림 세부 설정 (그림 만들 때 고름). 고른 값은 이 기기에 기억해 둠
@@ -48,7 +60,7 @@
   const detText = d => DETAIL.filter(g => d[g.k]).map(g => `${g.label}: ${d[g.k]}`).join(', ');
 
   // 그림 만들기 창. 쓸 그림을 고르면 그 그림을, 닫으면 null (album: true면 만든 마지막 그림)
-  async function genImage({ owner = '', frame = null, scene = '', text = '', whole = '', hint = '', album = false } = {}) {
+  async function genImage({ owner = '', frame = null, scene = '', text = '', whole = '', hint = '', album = false, photo = null } = {}) {
     if (!aiOk() && !(await askAi())) return null;
     let st, left;
     try { [st, left] = await Promise.all([api('styles'), api('ai_check', { kind: 'image', id: owner }).then(r => r.left)]); }
@@ -66,6 +78,8 @@
         <p class="muted">누가 · 어디서 · 무엇을 하는지, 계절·시간·분위기를 적으면 더 잘 그려요. 그림 안에 글자는 넣지 않아요.</p>
         <label class="f">장면 설명<textarea id="gP" rows="4" maxlength="3000" placeholder="예) 1980년대 겨울 아침, 밀양역 앞 골목에서 엄마 손을 잡고 걸어가는 여덟 살 아이. 입김이 하얗게 나오고 붕어빵 가게에서 김이 오른다.">${esc(scene)}</textarea></label>
         ${text || hint || whole ? `<p class="tip row" style="flex-wrap:wrap;gap:.3rem 1rem">${text || hint ? '<button class="linkbtn" id="gFrom" type="button">이 쪽 내용 불러오기</button>' : ''}${whole && whole.trim() !== text.trim() ? '<button class="linkbtn" id="gWhole" type="button">이 글 전체 불러오기</button>' : ''}</p>` : ''}
+        <div class="f"><span>바탕 사진 <small>올리면 이 사진을 바탕으로 그림을 그려요 (장면 설명은 비워도 돼요)</small></span>
+          <div class="row" style="gap:.5rem;flex-wrap:wrap;align-items:center"><img id="gSrcTh" class="gsrc" alt="바탕 사진" hidden><button type="button" class="btn btn-small" id="gSrc">사진 올리기</button><button type="button" class="btn btn-small btn-ghost" id="gSrcX" hidden>빼기</button></div></div>
         <label class="f">그림체<select id="gS">${opts.map(o => `<option value="${esc(o.v)}">${esc(o.name)}</option>`).join('')}</select></label>
         <details class="gdet" id="gDet" open><summary>그림 세부 설정 <small id="gDetSum">${esc(detText(det) || '고르지 않으면 AI가 알아서 정해요')}</small></summary>
           ${DETAIL.map(g => `<div class="dg"><span class="dg-l">${g.label}</span><div class="dg-o">${g.opts.map(o => `<button type="button" class="dchip" data-dg="${g.k}" data-dv="${esc(o)}" aria-pressed="${det[g.k] === o}">${esc(o)}</button>`).join('')}</div></div>`).join('')}
@@ -92,19 +106,37 @@
       if (fromB) fromB.onclick = () => { $('#gP', d).value = [scene, text].filter(Boolean).join('\n').slice(0, 3000); $('#gP', d).focus(); };
       const wholeB = $('#gWhole', d);
       if (wholeB) wholeB.onclick = () => { $('#gP', d).value = ('이 글에서 가장 잘 어울리는 한 장면을 골라 그려 주세요.\n\n' + whole).slice(0, 3000); $('#gP', d).focus(); };
+      // 바탕 사진
+      let srcData = '';
+      const showSrc = () => { const th = $('#gSrcTh', d); th.hidden = !srcData; if (srcData) th.src = srcData; $('#gSrcX', d).hidden = !srcData; $('#gSrc', d).textContent = srcData ? '다른 사진' : '사진 올리기'; };
+      $('#gSrc', d).onclick = async () => { const f = await pickFile(); if (!f) return; try { srcData = await toData(f); showSrc(); } catch (err) { $('#gErr', d).textContent = err.message; } };
+      $('#gSrcX', d).onclick = () => { srcData = ''; showSrc(); };
+      if (photo && photo.url) toData(photo.url).then(x => { srcData = x; showSrc(); }).catch(() => {});
+      // 만든 그림을 말로 고치기
+      const fixRow = () => `<div class="gfix"><label class="f">이 그림 고치기 <small>고칠 점만 적어요. 나머지는 그대로 둬요</small><input id="gFix" placeholder="예) 하늘을 노을빛으로, 고양이를 한 마리 더, 할머니가 웃게"></label><button type="button" class="btn btn-ai" id="gFixGo">말한 대로 고치기</button></div>`;
+      d.addEventListener('click', async e => {
+        if (!e.target.closest('#gFixGo') || !last) return;
+        const say = $('#gFix', d).value.trim(); if (say.length < 2) { $('#gErr', d).textContent = '어떻게 고칠지 적어 주세요.'; return; }
+        const b = e.target.closest('#gFixGo'); b.disabled = true; $('#gErr', d).textContent = '';
+        const out = $('#gOut', d); out.insertAdjacentHTML('afterbegin', '<div class="gen-wait"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span><p>고치는 중이에요… 30초~1분쯤 걸려요.</p></div>');
+        try { const r = await makeImage({ prompt: say, aspect: asp, owner, mode: 'revise', src: last.url }); last = r.im; if (r.left != null) left = r.left;
+          out.innerHTML = `<img src="${esc(last.url)}" alt="고친 그림"><p class="muted small">고친 그림이에요. 더 고치려면 다시 적어 주세요.</p>${fixRow()}`; }
+        catch (err) { $('#gErr', d).textContent = err.message; const w = $('.gen-wait', out); if (w) w.remove(); b.disabled = false; }
+        finally { $('#gGo', d).textContent = goLabel(); }
+      });
       $('#gUse', d).onclick = () => fin(last);
       $('#gGo', d).onclick = async () => {
         const prompt = $('#gP', d).value.trim();
-        if (prompt.replace(/\s/g, '').length < 4) { $('#gErr', d).textContent = '어떤 장면인지 조금 더 적어 주세요.'; return; }
+        if (!srcData && prompt.replace(/\s/g, '').length < 4) { $('#gErr', d).textContent = '어떤 장면인지 조금 더 적어 주세요. 사진을 올리면 비워도 돼요.'; return; }
         const o = opts.find(x => x.v === $('#gS', d).value) || opts[opts.length - 1];
         const go1 = $('#gGo', d), out = $('#gOut', d);
         go1.disabled = true; $('#gUse', d).disabled = true; $('#gErr', d).textContent = '';
         out.hidden = false; out.innerHTML = '<div class="gen-wait"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span><p>그리는 중이에요… 30초~1분쯤 걸려요. 창을 닫지 말고 기다려 주세요.</p></div>';
         try {
           const style = [o.prompt, detText(det), det.more ? `그 밖에: ${det.more}` : ''].filter(Boolean).join('. ');
-          const r = await makeImage({ prompt, style, aspect: asp, owner });
+          const r = await makeImage({ prompt, style, aspect: asp, owner, mode: srcData ? 'photo' : 'draw', src: srcData });
           last = r.im; if (r.left != null) left = r.left;
-          out.innerHTML = `<img src="${esc(last.url)}" alt="AI가 그린 그림"><p class="muted small">사진첩에도 담겼어요. 마음에 안 들면 설명을 고쳐서 다시 만들어 보세요.</p>`;
+          out.innerHTML = `<img src="${esc(last.url)}" alt="AI가 그린 그림"><p class="muted small">사진첩에도 담겼어요. 고칠 점이 있으면 아래에 적어 보세요.</p>${fixRow()}`;
           $('#gUse', d).hidden = false;
         } catch (err) {
           $('#gErr', d).textContent = err.message;
@@ -137,10 +169,11 @@
     }
     const a = text.slice(0, cut).trim(), b = text.slice(cut).trim();
     const n2 = b ? await Book.fitLength({ tpl: 'imgBottom', head: '', text: b, imgs: [] }, myTrack()) : 0; // 둘째 쪽 = 글 + 아래 그림
-    return { a, b, fits: n2 >= b.length, over: b.slice(n2).replace(/\s/g, '').length, cap: cut + n2 };
+    const cont = !!b && !(/\n\s*$/.test(text.slice(0, cut)) || /^[ \t]*\n/.test(text.slice(cut)));
+    return { a, b, fits: n2 >= b.length, over: b.slice(n2).replace(/\s/g, '').length, cap: cut + n2, cont };
   }
 
-  const essayPages = (title, sp) => [{ tpl: 'text', sec: 'essay', head: title, text: sp.a, hint: '수필 (2회차)' }].concat(sp.b ? [{ tpl: 'imgBottom', sec: 'essay', text: sp.b, scene: `수필 「${title || ''}」 마지막 부분에 어울리는 장면`, hint: '수필 2쪽 — 아래 그림 칸을 눌러 글에 맞는 그림을 AI로 만들거나 사진을 올려요' + (sp.fits ? '' : '. 글이 넘치면 조금 줄여 주세요') }] : []);
+  const essayPages = (title, sp) => [{ tpl: 'text', sec: 'essay', head: title, text: sp.a, hint: '수필 (2회차)', contNext: sp.cont || undefined }].concat(sp.b ? [{ tpl: 'imgBottom', sec: 'essay', cont: sp.cont || undefined, text: sp.b, scene: `수필 「${title || ''}」 마지막 부분에 어울리는 장면`, hint: '수필 2쪽 — 아래 그림 칸을 눌러 글에 맞는 그림을 AI로 만들거나 사진을 올려요' + (sp.fits ? '' : '. 글이 넘치면 조금 줄여 주세요') }] : []);
 
   // ---------- 내 책 구성표: 모두 같은 순서, 쪽 수는 사람마다 다르게, 전체는 짝수 ----------
   const SECS = [
@@ -846,6 +879,227 @@ ${pts.map(([x, y, n]) => `<g transform="translate(${x} ${y})"><circle r="32" fil
   }
 
 
+  // ---------- 사진 손보기: 선명하게 · 필터(사진 톤) · AI 색 되살리기 · AI 선명하게 복원 ----------
+  const FILTERS = [
+    ['원본', null], ['흑백', [.3, .59, .11, .3, .59, .11, .3, .59, .11, 0, 0, 0]], ['옛날 사진', [.393, .769, .189, .349, .686, .168, .272, .534, .131, 0, 0, 0]],
+    ['따뜻하게', [1.08, 0, 0, 0, 1.02, 0, 0, 0, .9, 10, 4, -6]], ['시원하게', [.92, 0, 0, 0, 1, 0, 0, 0, 1.1, -6, 0, 10]],
+    ['또렷한 색', 'vivid'], ['필름', [.95, .05, 0, .02, .92, .06, 0, .08, .86, 12, 8, 14]], ['밝게', [1, 0, 0, 0, 1, 0, 0, 0, 1, 22, 22, 22]]
+  ];
+  function applyMatrix(cx, w, h, m) {
+    const im = cx.getImageData(0, 0, w, h), d = im.data;
+    for (let i = 0; i < d.length; i += 4) {
+      const r = d[i], g = d[i + 1], b = d[i + 2];
+      if (m === 'vivid') { const l = .3 * r + .59 * g + .11 * b; d[i] = l + (r - l) * 1.35; d[i + 1] = l + (g - l) * 1.35; d[i + 2] = l + (b - l) * 1.35; continue; }
+      d[i] = m[0] * r + m[1] * g + m[2] * b + m[9]; d[i + 1] = m[3] * r + m[4] * g + m[5] * b + m[10]; d[i + 2] = m[6] * r + m[7] * g + m[8] * b + m[11];
+    }
+    cx.putImageData(im, 0, 0);
+  }
+  function sharpen(cx, w, h, amt = .6) { // 언샵 마스크(3×3)
+    const src = cx.getImageData(0, 0, w, h), o = cx.createImageData(w, h), s = src.data, d = o.data;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4;
+      if (!x || !y || x === w - 1 || y === h - 1) { d[i] = s[i]; d[i + 1] = s[i + 1]; d[i + 2] = s[i + 2]; d[i + 3] = 255; continue; }
+      for (let c = 0; c < 3; c++) { const v = s[i + c] * (1 + 4 * amt) - amt * (s[i - 4 + c] + s[i + 4 + c] + s[i - w * 4 + c] + s[i + w * 4 + c]); d[i + c] = v; }
+      d[i + 3] = 255;
+    }
+    cx.putImageData(o, 0, 0);
+  }
+  async function photoTools({ url, owner = '' } = {}) {
+    let base; // 지금 바탕 그림(AI 결과가 나오면 바뀜)
+    const load = async u => { const r = await fetch(u); if (!r.ok) throw new Error('사진을 불러오지 못했어요.'); return createImageBitmap(await r.blob()); };
+    try { base = await load(url); } catch (err) { toast(err.message, true); return null; }
+    const MAX = 2400;
+    let filt = 0, sharp = 0, aiUsed = false;
+    return new Promise(resolve => {
+      let done = false;
+      const d = modal(`<h2>사진 손보기</h2>
+        <p class="muted">필터는 바로 바뀌고 몇 번이든 해 볼 수 있어요. <b>AI</b> 버튼은 AI가 사진을 새로 만들어요(하루 그림 장수에서 1장씩 빠져요).</p>
+        <div class="pt-view"><canvas id="ptC"></canvas></div>
+        <div class="f"><span>사진 톤</span><div class="chips" id="ptF">${FILTERS.map(([n], i) => `<button type="button" class="chip-b ${i ? '' : 'on'}" data-f="${i}">${n}</button>`).join('')}</div></div>
+        <div class="f"><span>선명하게</span><div class="seg-btns" id="ptS">${['그대로', '조금', '많이'].map((n, i) => `<button type="button" data-s="${i}" aria-pressed="${!i}">${n}</button>`).join('')}</div></div>
+        <div class="f"><span>AI로 되살리기 <small>옛 사진·흐린 사진에 좋아요</small></span><div class="row" style="gap:.4rem;flex-wrap:wrap"><button type="button" class="btn btn-ai" data-ai="colorize">AI 색 되살리기 (흑백→컬러)</button><button type="button" class="btn btn-ai" data-ai="restore">AI 선명하게 복원</button></div></div>
+        <p class="err" id="ptErr" role="alert"></p>
+        <div class="row end"><button class="btn btn-ghost" data-close>닫기</button><button class="btn btn-main" id="ptOk">이 사진 쓰기</button></div>`, 'm-gen');
+      const cv = $('#ptC', d);
+      const render = () => {
+        const k = Math.min(1, MAX / Math.max(base.width, base.height));
+        cv.width = Math.round(base.width * k); cv.height = Math.round(base.height * k);
+        const cx = cv.getContext('2d', { willReadFrequently: true }); cx.drawImage(base, 0, 0, cv.width, cv.height);
+        if (FILTERS[filt][1]) applyMatrix(cx, cv.width, cv.height, FILTERS[filt][1]);
+        if (sharp) sharpen(cx, cv.width, cv.height, sharp === 1 ? .35 : .8);
+      };
+      try { render(); } catch (err) { $('#ptErr', d).textContent = '이 사진은 여기서 손볼 수 없어요. 사진을 다시 올려 주세요.'; }
+      d.addEventListener('close', () => { if (!done) { done = true; resolve(null); } });
+      d.addEventListener('click', async e => {
+        const f = e.target.closest('[data-f]'), sh = e.target.closest('[data-s]'), ai = e.target.closest('[data-ai]');
+        if (f) { filt = +f.dataset.f; $$('[data-f]', d).forEach(x => x.classList.toggle('on', x === f)); render(); }
+        if (sh) { sharp = +sh.dataset.s; $$('[data-s]', d).forEach(x => x.setAttribute('aria-pressed', x === sh)); render(); }
+        if (ai) {
+          if (!aiOk() && !(await askAi())) return;
+          await busy(ai, '만드는 중… (30초~1분)', async () => {
+            $('#ptErr', d).textContent = '';
+            try {
+              const j = await post(C.imageUrl || '/api/image', { mode: ai.dataset.ai, src: await toData(cv), prompt: '', owner });
+              base = await createImageBitmap(b64Blob(j.b64, j.mime || 'image/jpeg')); filt = 0; sharp = 0; aiUsed = true;
+              $$('[data-f]', d).forEach((x, i) => x.classList.toggle('on', !i)); $$('[data-s]', d).forEach((x, i) => x.setAttribute('aria-pressed', !i)); render();
+              toast('AI가 손본 사진이에요. 마음에 들면 "이 사진 쓰기"를 눌러 주세요.');
+            } catch (err) { $('#ptErr', d).textContent = err.message; }
+          });
+        }
+        if (e.target.closest('#ptOk')) {
+          if (!filt && !sharp && !aiUsed) { done = true; resolve(null); d.close(); return; }
+          await busy(e.target.closest('#ptOk'), '저장 중…', async () => {
+            try {
+              const blob = await new Promise(r => cv.toBlob(r, 'image/jpeg', .92));
+              const im = { ...(await store(await encode(blob))), fit: 'cover' };
+              await toAlbum(im, owner).catch(() => {});
+              done = true; resolve(im); d.close();
+            } catch (err) { $('#ptErr', d).textContent = err.message; }
+          });
+        }
+      });
+    });
+  }
+
+  // ---------- 4회차: 사진 한 장, 이야기 하나 ----------
+  const PHOTO_ACT = 's4_photo';
+  async function textPages(head, text, sec, hint) { // 글을 '글만' 쪽 여러 장으로 (첫 쪽에 제목)
+    const out = []; let rest = String(text || '').trim(), first = true;
+    while (rest && out.length < 10) {
+      const n = await Book.fitLength({ tpl: 'text', head: first ? head : '', text: rest, imgs: [] }, myTrack());
+      let cut = Math.max(40, n);
+      if (cut < rest.length) { const pb = rest.lastIndexOf('\n', cut), sb = Math.max(rest.lastIndexOf('. ', cut), rest.lastIndexOf('다.', cut) + 1, rest.lastIndexOf('요.', cut) + 1); if (pb > cut * .6) cut = pb; else if (sb > cut * .6) cut = sb + 1; }
+      const atPara = /\n\s*$/.test(rest.slice(0, cut)) || /^[ \t]*\n/.test(rest.slice(cut));
+      const pgx = { tpl: 'text', sec, head: first ? head : '', text: rest.slice(0, cut).trim(), hint };
+      if (out.length && out[out.length - 1]._open) pgx.cont = true;
+      if (cut < rest.length && !atPara) { pgx.contNext = true; pgx._open = true; }
+      out.push(pgx);
+      rest = rest.slice(cut).trim(); first = false;
+    }
+    out.forEach(x => delete x._open);
+    return out;
+  }
+  const LENS = [['p1', '한 쪽에 맞게'], ['p2', '두 쪽에 맞게'], ['full', '쪽수 상관없이 끝까지']];
+  VIEWS.photo = async v => {
+    const D = Object.assign({ photo: null, orig: null, memo: '', qa: [], len: 'full', mine: '', title: '', text: '', prev: '', toneDone: false }, ((await api('answer_get')).answers[PHOTO_ACT] || {}).data);
+    const mineOk = () => String(D.mine || '').replace(/\s/g, '').length >= 20;
+    let saveT = null;
+    const svState = (t, bad) => $$('.svstate', v).forEach(el => { el.textContent = t; el.classList.toggle('bad', !!bad); });
+    const save = () => { clearTimeout(saveT); saveT = null; S.dirty = false; svState('저장 중…');
+      return api('answer_save', { act: PHOTO_ACT, data: D }).then(() => svState(`저장했어요 ${new Date().toTimeString().slice(0, 5)}`))
+        .catch(err => { S.dirty = true; svState('저장하지 못했어요 — 인터넷 연결을 확인해 주세요', true); toast(err.message, true); }); };
+    const later = () => { clearTimeout(saveT); S.dirty = true; svState('고치는 중…'); saveT = setTimeout(save, 800); };
+    S.flush = async () => { if (saveT || S.dirty) await save(); };
+    const draw = () => {
+      v.innerHTML = `<h1 class="h">사진 한 장, 이야기 하나</h1>
+        <p class="lead">내 사진(또는 AI 그림) 한 장으로 이야기를 써요. AI가 사진을 보고 질문하면 대답하면서 이야기를 구체화하고, 마지막에 AI 초안을 내 말로 고쳐요.</p>
+        <p class="svstate" aria-live="polite"></p>
+        <section class="card"><h2 class="h2">① 사진 고르기</h2>
+          <div class="ph-row"><div class="ph-pic">${D.photo && D.photo.url ? `<img src="${esc(D.photo.thumb || D.photo.url)}" alt="고른 사진">` : '<span>사진이 아직 없어요</span>'}</div>
+            <div class="ph-btns"><button class="btn btn-main" data-ph="up">${D.photo ? '다른 사진 올리기' : '사진 올리기'}</button>
+              ${D.photo ? '<button class="btn" data-ph="tune">사진 손보기 <small>선명하게·색 되살리기·톤</small></button><button class="btn btn-ai" data-ph="art">이 사진을 그림으로</button>' : ''}
+              <button class="btn btn-ai" data-ph="ai">${D.photo ? 'AI로 새 그림' : '사진이 없으면 AI로 그림'}</button>
+              ${D.orig && D.photo && D.orig.url !== D.photo.url ? '<button class="btn btn-ghost" data-ph="back">처음 올린 사진으로</button>' : ''}</div></div>
+          <label class="f" for="pMemo">이 사진 한 줄 <small>언제·어디서·누구와 (발표할 때 소개해요)</small><textarea id="pMemo" rows="2" data-k="memo" placeholder="예) 1985년 봄, 밀양역 앞에서 엄마와 동생이랑">${esc(D.memo)}</textarea></label></section>
+        <section class="card"><h2 class="h2">② AI 질문으로 구체화 <small>대답은 짧아도 돼요</small></h2>
+          ${D.qa.length ? `<ol class="qa">${D.qa.map((x, i) => `<li><p class="qa-q">${esc(x.q)}</p><textarea rows="2" data-qa="${i}" placeholder="대답을 적어 주세요">${esc(x.a || '')}</textarea></li>`).join('')}</ol>` : '<p class="muted">사진을 올리고 아래 버튼을 누르면 AI가 사진을 보고 질문 8개를 해요.</p>'}
+          <div class="row" style="flex-wrap:wrap;gap:.5rem"><button class="btn btn-ai" id="pQ">${D.qa.length ? '질문 더 받기' : 'AI에게 질문 받기'}</button></div></section>
+        <section class="card"><h2 class="h2">③ 이야기 쓰기 <small>네 단계로 해요</small></h2>
+          <ol class="wsteps">
+            <li class="ws ${mineOk() ? 'done' : 'now'}"><div class="ws-h"><b>3-1</b><span>내가 초안 쓰기</span>${mineOk() ? '<i>✓</i>' : ''}</div>
+              <p class="muted">질문에 대답한 것을 떠올리며 생각나는 대로 3~5줄 써요. 맞춤법은 신경 쓰지 않아도 돼요.</p>
+              <textarea id="pMine" rows="5" data-k="mine" placeholder="예) 1985년 봄, 엄마가 새 블라우스를 입고 밀양역 앞에서 사진을 찍자고 했다. 동생은 자꾸 눈을 감았다…">${esc(D.mine)}</textarea></li>
+            <li class="ws ${D.text ? 'done' : mineOk() ? 'now' : ''}"><div class="ws-h"><b>3-2</b><span>AI가 구체화하기</span>${D.text ? '<i>✓</i>' : ''}</div>
+              <p class="muted">내 초안을 뼈대로, 사진과 질문·대답을 더해 이야기를 살찌워요. 내 문장과 순서는 최대한 그대로 둬요.</p>
+              <div class="f"><span>분량</span><div class="seg-btns" id="pLen">${LENS.map(([k, l]) => `<button type="button" data-len="${k}" aria-pressed="${D.len === k}">${l}</button>`).join('')}</div>
+                <small class="muted">어느 쪽을 골라도 발단부터 결말까지 차근차근 써요.</small></div>
+              <button class="btn btn-ai" id="pDraft" ${mineOk() ? '' : 'disabled'}>${D.text ? 'AI가 다시 구체화하기' : 'AI가 구체화하기'}</button>
+              ${mineOk() ? '' : '<small class="muted">3-1 초안을 조금 더 써야 눌러져요 (20자 이상).</small>'}</li>
+            <li class="ws ${D.toneDone ? 'done' : D.text ? 'now' : ''}"><div class="ws-h"><b>3-3</b><span>내가 말투 고치기</span>${D.toneDone ? '<i>✓</i>' : ''}</div>
+              ${D.text || D.title ? `<p class="muted">세 군데만 고쳐도 내 글이 돼요: <b>내 말투</b>("정말 놀라웠다" → "아이고, 이게 뭐꼬") · <b>사진 속 한 가지</b> · <b>마지막 문장</b>.</p>
+              <label class="f" for="pTitle">제목<input id="pTitle" data-k="title" value="${esc(D.title)}"></label>
+              <label class="f" for="pText">글 <small>고친 내용은 자동으로 저장돼요</small><textarea id="pText" rows="12" data-k="text">${esc(D.text)}</textarea></label>
+              <label class="check"><input type="checkbox" id="pTone" ${D.toneDone ? 'checked' : ''}> 내 말투로 다 고쳤어요</label>` : '<p class="muted">3-2를 하면 여기에 글이 나와요.</p>'}</li>
+            <li class="ws ${D.text ? '' : ''}"><div class="ws-h"><b>3-4</b><span>길면 요약하기 <small>필요할 때만</small></span></div>
+              ${D.text ? `<p class="fitline" id="pFit"></p>
+              <div class="row" style="flex-wrap:wrap;gap:.4rem"><button class="btn btn-small btn-ai" data-shrink="p1">한 쪽으로</button><button class="btn btn-small btn-ai" data-shrink="p2">한 장(2쪽)으로</button><button class="btn btn-small btn-ai" data-shrink="p4">두 장(4쪽)으로</button>
+                ${D.prev ? '<button class="btn btn-small btn-ghost" id="pUndo">요약 전으로 되돌리기</button>' : ''}</div>
+              <small class="muted">결말까지 남기고 줄여요. 사진 이야기는 사진 포함 2~4쪽이 좋아요.</small>` : '<p class="muted">글이 생기면 쪽수를 알려 줘요.</p>'}</li>
+          </ol></section>
+        <section class="card"><h2 class="h2">④ 내 책에 넣기</h2>
+          <p class="muted" id="pBookInfo">사진 1쪽 + 글 쪽으로 들어가요. 넣은 뒤 "내 책 쓰기"에서 다듬어요.</p>
+          <button class="btn btn-main" id="pBook" ${D.text ? '' : 'disabled'}>내 책에 넣기</button></section>
+        <p class="svstate" aria-live="polite"></p>`;
+      checkFit();
+    };
+    let fitT = null;
+    const checkFit = () => { clearTimeout(fitT); fitT = setTimeout(async () => {
+      const el = $('#pFit', v), info = $('#pBookInfo', v); if (!el || !window.Book || !D.text) return;
+      const tp = await textPages(D.title, D.text, 'photo', ''); if (!$('#pFit', v)) return;
+      const n = tp.length + (D.photo ? 1 : 0), len = D.text.replace(/\s/g, '').length;
+      el.className = 'fitline ' + (n <= 4 ? 'ok' : 'over');
+      el.textContent = `글 ${tp.length}쪽 + 사진 ${D.photo ? 1 : 0}쪽 = ${n}쪽 (${len}자)${n > 4 ? ' — 사진 이야기는 2~4쪽이 좋아요. 요약하기로 줄여 보세요' : ''}`;
+      if (info) info.textContent = `사진 ${D.photo ? 1 : 0}쪽 + 글 ${tp.length}쪽 = ${n}쪽으로 들어가요. 넣은 뒤 "내 책 쓰기"에서 다듬어요.`;
+    }, 500); };
+    draw();
+    v.oninput = e => {
+      const k = e.target.dataset.k; if (k) { const was = mineOk(); D[k] = e.target.value; later(); if (k === 'text' || k === 'title') checkFit(); if (k === 'mine' && was !== mineOk()) { const b = $('#pDraft', v); if (b) b.disabled = !mineOk(); } return; }
+      const q = e.target.dataset.qa; if (q != null) { D.qa[+q].a = e.target.value; later(); }
+    };
+    v.onclick = async e => {
+      const ph = e.target.closest('[data-ph]');
+      if (ph) {
+        const t = ph.dataset.ph;
+        if (t === 'up') { const f = await pickFile(); if (!f) return; await busy(ph, '올리는 중…', async () => { const im = await uploadImage(f); D.photo = im; D.orig = im; await toAlbum(im, '').catch(() => {}); await save(); draw(); }); return; }
+        if (t === 'tune') { const im = await photoTools({ url: D.photo.url }); if (im) { D.photo = im; await save(); draw(); } return; }
+        if (t === 'art') { const im = await genImage({ frame: PICFR, photo: D.orig || D.photo, text: D.memo }); if (im) { D.photo = im; await save(); draw(); } return; }
+        if (t === 'ai') { const im = await genImage({ frame: PICFR, scene: D.memo, text: D.text }); if (im) { D.photo = im; if (!D.orig) D.orig = null; await save(); draw(); } return; }
+        if (t === 'back') { D.photo = D.orig; await save(); draw(); return; }
+      }
+      if (e.target.closest('#pQ')) {
+        if (!aiOk() && !(await askAi())) return;
+        await busy(e.target.closest('#pQ'), '사진을 보는 중… (15초쯤)', async () => {
+          await save(); const r = await askAI({ mode: 'pq', photo: (D.orig || D.photo || {}).url || '', memo: D.memo, qa: D.qa });
+          D.qa.push(...(r.qs || []).map(q => ({ q, a: '' }))); await save(); draw();
+        });
+        return;
+      }
+      const ln = e.target.closest('[data-len]'); if (ln) { D.len = ln.dataset.len; $$('[data-len]', v).forEach(x => x.setAttribute('aria-pressed', x === ln)); later(); return; }
+      if (e.target.closest('#pDraft')) {
+        if (D.text && !(await ask('AI가 다시 구체화할까요?', '지금 3-3의 글은 "요약 전으로 되돌리기"로 한 번 되살릴 수 있어요.', '다시 구체화하기'))) return;
+        if (!aiOk() && !(await askAi())) return;
+        await busy(e.target.closest('#pDraft'), '구체화하는 중… (30초~1분)', async () => {
+          await save(); const base = { photo: (D.orig || D.photo || {}).url || '', memo: D.memo, qa: D.qa, len: D.len, form: '이야기', draft: D.mine };
+          const r = await askAI({ mode: 'pstory', ...base }); let text = r.text || '', more = r.more;
+          // 길어서 중간에 멈추면 알아서 이어 써서 결말까지 다 받음
+          for (let k = 1; more && k <= 5; k++) {
+            const b = $('#pDraft', v); if (b) b.textContent = `이어서 쓰는 중… (${k + 1}번째)`;
+            const r2 = await askAI({ mode: 'pmore', ...base, title: r.title, text });
+            const add = String(r2.text || ''); if (!add.trim()) break;
+            text = /[.!?…"”’)]\s*$/.test(text) ? text.trimEnd() + '\n\n' + add.trimStart() : text + add; more = r2.more; // 문장 중간에서 끊겼으면 그대로 붙임
+          }
+          if (D.text) D.prev = D.text; D.title = (r.title || D.title || '').trim(); D.text = text.trim(); D.ai = D.text; D.toneDone = false; D.shrunk = ''; await save(); draw(); toast('구체화했어요. 3-3에서 내 말투로 고쳐 주세요.');
+        });
+        return;
+      }
+      const sk = e.target.closest('[data-shrink]');
+      if (sk) {
+        if (!aiOk() && !(await askAi())) return;
+        await busy(sk, '줄이는 중…', async () => { await save(); const r = await askAI({ mode: 'shrink', text: D.text, target: sk.dataset.shrink }); D.prev = D.text; D.text = r.text; D.shrunk = { p1: '한 쪽', p2: '한 장(2쪽)', p4: '두 장(4쪽)' }[sk.dataset.shrink]; await save(); draw(); toast('줄였어요. 마음에 안 들면 "요약 전으로 되돌리기"를 눌러 주세요.'); });
+        return;
+      }
+      if (e.target.id === 'pTone') { D.toneDone = e.target.checked; await save(); draw(); return; }
+      if (e.target.closest('#pUndo')) { const t = D.text; D.text = D.prev; D.prev = t; D.shrunk = D.shrunk ? '' : D.shrunk; await save(); draw(); return; }
+      if (e.target.closest('#pBook')) {
+        await busy(e.target.closest('#pBook'), '넣는 중…', async () => {
+          await save();
+          const pages = (D.photo ? [{ tpl: 'fullSafe', sec: 'photo', imgs: [D.photo], hint: '사진 이야기 — 사진 (4회차)' }] : []).concat(await textPages(D.title, D.text, 'photo', '사진 이야기 — 글 (4회차)'));
+          const n = await appendPage(pages); D.inBook = true; await save(); toast(`내 책에 ${pages.length}쪽을 넣었어요 (지금 모두 ${n}쪽). "내 책 쓰기"에서 다듬어 주세요.`);
+        });
+      }
+    };
+  };
+
   // ---------- 휴지통: 지운 쪽을 모아 두고 되살리기 (사람마다 하나, 최근 40묶음) ----------
   async function trashPut(owner, list, from) { // list = [{ i: 원래 자리, pg: 쪽 }]
     if (!list || !list.length) return;
@@ -945,5 +1199,5 @@ ${pts.map(([x, y, n]) => `<g transform="translate(${x} ${y})"><circle r="32" fil
       };
     });
   }
-  window.YSX = { genImage, openPlan, openBookPlan, secOf, openCompose, openPageManager, trashPut, openTrash };
+  window.YSX = { genImage, openPlan, openBookPlan, secOf, openCompose, openPageManager, trashPut, openTrash, photoTools };
 })();

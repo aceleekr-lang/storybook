@@ -60,16 +60,20 @@
     if (kind === 'quote') return t.trim() ? `<p>${esc(t.trim())}</p>` : '';
     return lines(t);
   }
-  const flow = (kind, text, pg) => `<div class="flow f-${kind}${pg && pg.indent === false ? ' noind' : ''}">${flowInner(kind, text)}</div>`;
+  const flow = (kind, text, pg) => `<div class="flow f-${kind}${pg && pg.indent === false ? ' noind' : ''}${pg && pg.cont ? ' cont' : ''}${pg && pg.contNext ? ' contn' : ''}">${flowInner(kind, text)}</div>`; // cont: 앞 쪽에서 이어진 문단(첫 줄 들여쓰기 없음), contn: 다음 쪽으로 이어지는 문단
 
   // 글꼴·크기·굵게 → CSS 변수 (굵게는 진짜 굵은 글씨가 있는 글꼴에서만)
   const F = () => window.FONT;
   function styleVars(s) {
-    if (!s || !F()) return '';
+    if (!s) return '';
+    if (!F()) return (s.ls ? `--pls:${+s.ls}em;` : '') + (+s.lh > 0 ? `--plh:${+s.lh};` : '') + (s.al === 'left' ? '--pal:left;' : '');
     let out = '';
     if (s.font && F().get(s.font)) out += `--pf:${F().fam(s.font)};`;
     if (+s.size > 0) out += `--ps:${+s.size}pt;`;
     if (s.bold && (!s.font || F().canBold(s.font))) out += '--pfw:700;';
+    if (s.ls) out += `--pls:${+s.ls}em;`; // 자간
+    if (+s.lh > 0) out += `--plh:${+s.lh};`; // 행간
+    if (s.al === 'left') out += '--pal:left;'; // 정렬
     return out;
   }
   // "내 마음대로" 쪽의 상자 하나 (mm 단위 절대 위치)

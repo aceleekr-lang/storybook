@@ -1,7 +1,7 @@
 {
   "functions": {
     "api/proof.js": { "maxDuration": 60 },
-    "api/interview.js": { "maxDuration": 60 },
+    "api/interview.js": { "maxDuration": 120 },
     "api/image.js": { "maxDuration": 120 }
   }
 }

@@ -49,12 +49,13 @@ const ESSAY = `당신은 주민의 구술을 짧은 수필로 옮겨 적는 편�
 
 const FIT = n => `아래 수필을 공백 포함 ${n}자 이내로 줄입니다. 글쓴이의 표현과 문장은 최대한 그대로 두고, 덜 중요한 문장과 꾸밈말만 덜어냅니다. 새 내용은 넣지 않습니다. 문단은 3~4개로 두고 문단 사이는 빈 줄 하나. 다른 말 없이 JSON 하나만 출력: {"essay":"본문"}`;
 
-const STORY = n => `당신은 주민과 함께 그림책을 만드는 동화 작가입니다. 참여자가 준 설정으로 경상남도 밀양시 가곡동을 배경으로 한 짧은 상상 이야기를 씁니다.
+const STORY = (n, full) => `당신은 주민과 함께 그림책을 만드는 동화 작가입니다. 참여자가 준 설정으로 경상남도 밀양시 가곡동을 배경으로 한 짧은 상상 이야기를 씁니다.
 
 지킬 것
 - 참여자가 준 설정(상상 카드, 주인공, 장소, 사건, 결말)을 중심으로 씁니다. 빈 칸은 이야기에 어울리게 채우되 설정에서 벗어나지 않습니다.
 - 장면은 ${n}개입니다. ${n === 2 ? '1장면은 시작과 사건, 2장면은 해결과 끝.' : '한 장면 안에서 시작부터 끝까지.'}
-- 장면마다 text(책 한 쪽 분량, 공백 포함 400~550자, 문단 2~3개, 문단 사이 빈 줄 하나)와 pic(그 장면의 세로 그림 묘사, 60~90자)을 씁니다.
+- 이야기는 안정적인 서사 구조(발단→전개→위기·절정→결말)로 끝까지 완결합니다. 결말을 서둘러 몰아치지 말고, 단계마다 장면을 충분히 줍니다. 중간에 끊거나 '계속' 같은 말로 끝내지 않습니다.
+- 장면마다 text(${full ? '분량 제한 없이 그 장면에 필요한 만큼 충분히(길어져도 괜찮음), 문단 사이 빈 줄 하나' : '책 한 쪽 분량, 공백 포함 400~550자, 문단 2~3개, 문단 사이 빈 줄 하나'})와 pic(그 장면의 세로 그림 묘사, 60~90자)을 씁니다.
 - pic에는 누가·어디서·무엇을 하는지, 시간과 분위기를 그림으로 보이는 것만 적습니다. 글자·간판 글씨는 넣지 않습니다.
 - 따뜻하고 쉬운 문장으로, 소리 내어 읽기 좋게 씁니다. 번역투, 뻔한 교훈, 과장된 감탄은 피합니다.
 - 실존 인물, 유명 만화·영화 캐릭터, 상표는 쓰지 않습니다.
@@ -66,7 +67,29 @@ const INTRO = `참여자가 1회차 수업에 적은 자기소개 메모로, 책
 - 메모에 있는 사실만 씁니다. 지어내지 않습니다. 자랑이나 과장 없이 담백하게, 참여자의 말투를 살립니다.
 - 다른 말 없이 JSON 하나만 출력: {"text":"..."}`;
 
+// ---- 4회차 사진 이야기 · 5회차 자유 주제 · 요약 ----
+const LEN = { p1: '책 한 쪽 분량(공백 포함 600~720자)', p2: '책 두 쪽 분량(공백 포함 1,300~1,450자)', full: '분량 제한 없음. 길어져도 괜찮으니(보통 2,000~4,000자) 서사를 충분히 펼친다' };
+const FORMS = { 수필: '1인칭 수필', 산문: '자유로운 산문', 동화: '아이도 읽을 수 있는 동화', 시: '시(연과 행을 나누어, 줄바꿈으로 행을 표시)', 이야기: '이야기' };
+const PQ = `당신은 주민이 가져온 사진 한 장으로 이야기를 끌어내는 다정한 인터뷰어입니다. 사진을 잘 보고, 참여자가 적은 메모와 지금까지의 문답을 참고해 그 사진의 이야기를 구체화할 질문 8개를 만듭니다.
+- 사진에 보이는 것(사람·장소·물건·계절·빛)을 짚어서 묻습니다. 예) "왼쪽에 서 있는 분은 누구인가요?"
+- 언제·어디서·누구와·무슨 일이 있었는지, 사진 찍기 전과 후, 그때의 소리·냄새·날씨·마음, 사진 속 사람과의 사이, 지금 다시 보니 드는 생각을 골고루 묻습니다. 쉬운 질문부터 깊은 질문 순서로.
+- 이미 대답한 것은 다시 묻지 않습니다. 한 질문은 한 문장, 쉽고 공손하게("당신"이라고 부르지 말고 주어 없이).
+- 사진에 실존 유명인이 있어도 누구인지 추측하지 않습니다.`;
+const PSTORY = (len, form, mine) => `당신은 주민의 사진과 이야기를 책에 실을 글로 옮기는 편집자입니다. ${mine ? `참여자가 직접 쓴 <내 초안>을 뼈대로 삼아, 사진과 메모·문답의 내용을 더해 ${FORMS[form] || '이야기'} 한 편으로 구체화합니다.
+- <내 초안>의 사건 순서·표현·문장·말투를 최대한 그대로 살리고, 빠진 장면·묘사·마음을 문답에서 찾아 채웁니다. 초안에 없는 큰 사건을 새로 만들지 않습니다.` : `사진, 참여자의 메모와 문답을 바탕으로 ${FORMS[form] || '이야기'} 한 편을 씁니다.`}
+- 문답과 메모에 나온 사실을 중심으로 씁니다. 장소·사람·연도·사건을 새로 지어내지 않습니다(동화·시는 상상을 더해도 됩니다).
+- 참여자의 말투와 표현을 살리고, 사진 속 장면이 눈에 보이듯 씁니다.
+- 서사 구조를 안정적으로 갖춥니다: 발단(때·곳·사람 소개) → 전개(일이 벌어지고 쌓임) → 위기·절정(마음이 가장 크게 움직이는 장면) → 결말(여운이 남는 마무리). 단계마다 장면과 묘사를 충분히 주고, 결말을 서둘러 몇 문장으로 몰아서 끝내지 않습니다.
+- 분량: ${LEN[len] || LEN.full}. ${len === 'full' ? '분량을 아끼지 말고, 결말에 이르기까지 필요한 장면을 모두 씁니다. 결말도 한 문단 이상으로 차분히 씁니다.' : '분량 안에서 네 단계의 비중을 고르게 나누고, 결말까지 자연스럽게 이어지게 씁니다.'}
+- 번역투, 뻔한 교훈, 과장된 감탄, "소중한 추억" 같은 말은 피합니다. 문단 사이는 빈 줄 하나.
+- 제목은 15자 안팎으로 글 속 장면이나 사물로 짓습니다.`;
+const SHRINK = target => `아래 글을 ${target === 'p1' ? '책 한 쪽(공백 포함 650자 이내)' : target === 'p2' ? '책 두 쪽(공백 포함 1,400자 이내)' : '책 네 쪽(공백 포함 2,800자 이내)'}에 들어가게 줄입니다.
+- 이야기의 서사 구조(발단·전개·절정·결말)가 그대로 보이게 남깁니다. 결말을 잘라 내거나 한 문장으로 뭉뚱그리지 않습니다.
+- 글쓴이의 표현과 문장을 최대한 그대로 쓰고, 덜 중요한 문장과 꾸밈말을 덜어냅니다. 새 내용은 넣지 않습니다.
+- 문단 사이는 빈 줄 하나.`;
+
 const clip = (s, n) => String(s || '').slice(0, n);
+const photoPart = (url, sbUrl) => { try { const u = new URL(String(url || '')); if (u.protocol === 'https:' && u.host === new URL(sbUrl).host) return [{ type: 'image', source: { type: 'url', url: u.href } }]; } catch { /* 사진 없음 */ } return []; };
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') { res.status(405).json({ error: 'POST로만 부를 수 있어요.' }); return; }
@@ -75,7 +98,7 @@ module.exports = async function handler(req, res) {
     res.status(500).json({ error: 'AI 서버 설정(환경변수)이 비어 있어요. 운영자에게 알려 주세요.' }); return;
   }
   const body = readBody(req);
-  const mode = ['ask', 'sum', 'plan', 'essay', 'fit', 'story', 'intro'].includes(body.mode) ? body.mode : 'ask';
+  const mode = ['ask', 'sum', 'plan', 'essay', 'fit', 'story', 'intro', 'pq', 'pstory', 'pmore', 'shrink'].includes(body.mode) ? body.mode : 'ask';
   // msgs: [{r:'ai'|'me', t:'...'}] — 최근 40개만
   const msgs = (Array.isArray(body.msgs) ? body.msgs : []).filter(m => m && m.t).slice(-40).map(m => ({ r: m.r === 'ai' ? 'ai' : 'me', t: clip(m.t, 2000) }));
   const seed = clip(body.seed, 300);
@@ -111,8 +134,35 @@ module.exports = async function handler(req, res) {
       const set = [['상상 카드', body.card], ['떠오른 한 줄', body.idea], ['주인공', body.who], ['장소', body.where], ['무슨 일', body.what], ['어떻게 끝날까', body.ending]]
         .filter(([, x]) => String(x || '').trim()).map(([k, x]) => `${k}: ${clip(x, 300)}`).join('\n');
       if (set.replace(/\s/g, '').length < 6) { res.status(400).json({ error: '상상 카드를 고르거나 이야기 씨앗을 한 칸 이상 적어 주세요.' }); return; }
-      const j = await claudeJSON({ system: STORY(n), messages: [{ role: 'user', content: set }], max_tokens: 4000, schema: { title: 1, scenes: 'scenes' } });
-      out = { title: clip(j.title, 40), scenes: (Array.isArray(j.scenes) ? j.scenes : []).slice(0, n).map(x => ({ text: clip(x && x.text, 1200), pic: clip(x && x.pic, 300) })) };
+      const j = await claudeJSON({ system: STORY(n, body.len === 'full'), messages: [{ role: 'user', content: set }], max_tokens: body.len === 'full' ? 7000 : 4000, schema: { title: 1, scenes: 'scenes' } });
+      out = { title: clip(j.title, 40), scenes: (Array.isArray(j.scenes) ? j.scenes : []).slice(0, n).map(x => ({ text: clip(x && x.text, 4000), pic: clip(x && x.pic, 300) })) };
+    } else if (mode === 'pq' || mode === 'pstory' || mode === 'pmore') {
+      const img = photoPart(body.photo, SUPABASE_URL);
+      const qa = (Array.isArray(body.qa) ? body.qa : []).filter(x => x && (x.q || x.a)).slice(0, 20).map(x => `질문: ${clip(x.q, 300)}\n대답: ${clip(x.a, 1500) || '(아직 없음)'}`).join('\n\n');
+      const mine = clip(body.draft, 6000).trim();
+      const info = [body.memo && `참여자 메모: ${clip(body.memo, 1500)}`, qa && `<문답>\n${qa}\n</문답>`, mode !== 'pq' && mine && `<내 초안>\n${mine}\n</내 초안>`].filter(Boolean).join('\n\n');
+      if (!img.length && info.replace(/\s/g, '').length < 6) { res.status(400).json({ error: '사진을 올리거나 메모를 조금 적어 주세요.' }); return; }
+      const content = [...img, { type: 'text', text: (img.length ? '' : '(사진 없이) ') + (info || '사진을 보고 시작해 주세요.') }];
+      if (mode === 'pq') {
+        const j = await claudeJSON({ system: PQ, messages: [{ role: 'user', content }], max_tokens: 2000, schema: { q1: 1, q2: 1, q3: 1, q4: 1, q5: 1, q6: 1, q7: 1, q8: 1 } });
+        out = { qs: [j.q1, j.q2, j.q3, j.q4, j.q5, j.q6, j.q7, j.q8].map(x => clip(x, 200).trim()).filter(Boolean) };
+      } else {
+        const len = ['p1', 'p2', 'full'].includes(body.len) ? body.len : 'full';
+        if (mode === 'pmore') { // 길어서 멈춘 글을 이어서 결말까지
+          const sofar = clip(body.text, 14000);
+          const j = await claudeJSON({ system: PSTORY(len, body.form, mine) + `\n\n지금은 이어 쓰기입니다. 제목은 「${clip(body.title, 60)}」입니다. 아래 <앞부분>은 이미 쓴 글입니다. 앞부분을 되풀이하지 말고, 끊긴 바로 다음 글자부터 이어서 결말까지 씁니다.`,
+            messages: [{ role: 'user', content: [...content, { type: 'text', text: `<앞부분>\n${sofar}\n</앞부분>` }] }], max_tokens: 5000, schema: { text: 1 } });
+          out = { text: clip(j.text, 12000), more: !!j.cut };
+        } else {
+          const j = await claudeJSON({ system: PSTORY(len, body.form, mine), messages: [{ role: 'user', content }], max_tokens: len === 'full' ? 5000 : 4000, schema: { title: 1, text: 1 } });
+          out = { title: clip(j.title, 60), text: clip(j.text, 12000), more: !!j.cut };
+        }
+      }
+    } else if (mode === 'shrink') {
+      const text = clip(body.text, 9000), target = ['p1', 'p2', 'p4'].includes(body.target) ? body.target : 'p1';
+      if (text.replace(/\s/g, '').length < 50) { res.status(400).json({ error: '줄일 글이 없어요.' }); return; }
+      const j = await claudeJSON({ system: SHRINK(target), messages: [{ role: 'user', content: `<글>\n${text}\n</글>` }], max_tokens: 5000, schema: { text: 1 } });
+      out = { text: clip(j.text, 6000) };
     } else if (mode === 'intro') {
       const memo = clip(body.memo, 1200);
       if (memo.replace(/\s/g, '').length < 4) { res.status(400).json({ error: '자기소개 메모가 없어요. "오늘 수업" 1회차 자기소개를 먼저 적어 주세요.' }); return; }

@@ -65,7 +65,7 @@
     const teacher = store.get('teacher', ''), line = store.get('line', '');
     $$('[data-bind="teacher"]').forEach(el => { el.textContent = teacher || '강사 이름'; });
     $$('[data-bind="teacherLine"]').forEach(el => { el.textContent = line || '한 줄 소개를 ⚙ 설정에서 적어 주세요'; });
-    ['qr', 'qr0', 'qr2', 'qr3'].forEach(id => {
+    ['qr', 'qr0', 'qr2', 'qr3', 'qr4'].forEach(id => {
       const box = $('#' + id); box.innerHTML = '';
       const sz = Math.round(parseFloat(box.style.width) || 340);
       if (url && window.QRCode) new QRCode(box, { text: url, width: sz, height: sz, correctLevel: QRCode.CorrectLevel.M });
@@ -249,6 +249,11 @@
         <div class="ivpane">${storyHTML(a.data)}</div><button class="btn main" id="ansClose">닫기</button></div>`;
       $('#ansv').hidden = false; return;
     }
+    if (act === 's4_photo') { const d = a.data, p = d.photo;
+      $('#ansv').innerHTML = `<div class="ansv-in ivview" style="--c:${colorOf(id)}"><p class="ansv-k">사진 이야기 · ${esc(a.name)}</p><h2>${esc(d.title || d.memo || '사진 이야기')}</h2>
+        ${p && p.url ? `<img class="sv-thumb" src="${esc(p.url)}" alt="">` : ''}<p class="sv-text">${esc(d.text || '아직 이야기를 쓰지 않았어요.').replace(/\n/g, '<br>')}</p><button class="btn main" id="ansClose">닫기</button></div>`;
+      $('#ansv').hidden = false; return;
+    }
     const def = ACT[act];
     $('#ansv').innerHTML = `<div class="ansv-in" style="--c:${colorOf(id)}"><p class="ansv-k">${esc(def ? def.title : act)}</p><h2>${esc(a.data.call ? `${a.data.call} (${a.name})` : a.name)}</h2>
       ${(def ? def.fields : []).filter(f => a.data[f.k] && f.k !== 'call').map(f => `<div class="ansv-f"><b>${esc(f.label)}</b><p>${esc(a.data[f.k]).replace(/\n/g, '<br>')}</p></div>`).join('')}
@@ -403,7 +408,8 @@
 
   // ---- 3회차: 진행 현황(data-prog)과 공유발표 스포트라이트(data-spot) ----
   const BOARD = new Map();
-  const storyOf = id => ((LIVE.answers.find(x => x.act === 's3_story' && x.id === id) || {}).data) || {};
+  const dataOf = act => id => ((LIVE.answers.find(x => x.act === act && x.id === id) || {}).data) || {};
+  const storyOf = dataOf('s3_story'), photoOf = dataOf('s4_photo');
   const seedN = d => ['who', 'where', 'what', 'ending'].filter(k => String(d[k] || '').trim()).length;
   const PRED = {
     base: m => ((BOARD.get(m.id) || {}).npages || 0) >= 2,
@@ -411,15 +417,25 @@
     seed: m => seedN(storyOf(m.id)) >= 2,
     text: m => (storyOf(m.id).parts || []).length > 0,
     img: m => (storyOf(m.id).parts || []).some(p => p.img && p.img.url),
-    book: m => ((BOARD.get(m.id) || {}).npages || 0) > 0
+    book: m => ((BOARD.get(m.id) || {}).npages || 0) > 0,
+    photo: m => !!(photoOf(m.id).photo && photoOf(m.id).photo.url),
+    qa: m => (photoOf(m.id).qa || []).filter(x => String(x.a || '').trim()).length >= 2,
+    ptext: m => !!String(photoOf(m.id).text || '').trim(),
+    pmine: m => String(photoOf(m.id).mine || '').replace(/\s/g, '').length >= 20,
+    pai: m => !!String(photoOf(m.id).ai || photoOf(m.id).text || '').trim(),
+    ptone: m => !!photoOf(m.id).toneDone,
+    pshrink: m => !!photoOf(m.id).shrunk,
+    pbook: m => !!photoOf(m.id).inBook
   };
-  const PLABEL = { base: '작가 소개·수필을 넣은 분 (2쪽 이상)', idea: '카드를 고른 분', seed: '씨앗을 두 칸 이상 채운 분', text: '초안을 받은 분', img: '그림을 만든 분', book: '책에 쪽이 있는 분' };
+  const PV = { base: 'book', pbook: 'book' };
+  const stepOf = id => { const d = photoOf(id); return d.toneDone ? '말투✓' : d.text ? '구체화' : String(d.mine || '').trim() ? '초안' : ''; }; // 진행 현황 → 이름 눌렀을 때 보여 줄 내용
+  const PLABEL = { base: '작가 소개·수필을 넣은 분 (2쪽 이상)', idea: '카드를 고른 분', seed: '씨앗을 두 칸 이상 채운 분', text: '초안을 받은 분', img: '그림을 만든 분', book: '책에 쪽이 있는 분', photo: '사진을 고른 분', qa: 'AI 질문에 두 개 이상 대답한 분', ptext: 'AI 구체화까지 한 분 (이름 옆: 지금 단계)', pmine: '3-1 내가 초안을 쓴 분', pai: '3-2 AI가 구체화한 분', ptone: '3-3 말투를 고친 분', pshrink: '3-4 요약한 분 (필요할 때만)', pbook: '사진 이야기를 책에 넣은 분' };
   const approved = () => LIVE.members.filter(m => m.approved);
   function renderProg() {
     $$('[data-prog]').forEach(el => {
       const t = el.dataset.prog, ms = approved(), done = ms.filter(PRED[t]);
       el.innerHTML = `<p>${PLABEL[t]} <b>${done.length}</b> / ${ms.length}명</p>
-        <div class="chiprow">${ms.map(m => `<span class="chip ${PRED[t](m) ? 'done' : 'not'}" style="--c:${colorOf(m.id)}">${PRED[t](m) ? '✓ ' : ''}${esc(m.name)}</span>`).join('')}</div>`;
+        <div class="chiprow">${ms.map(m => { const st = t === 'ptext' ? stepOf(m.id) : ''; return PRED[t](m) ? `<button class="chip done" style="--c:${colorOf(m.id)}" data-pv="${t}|${m.id}">✓ ${esc(m.name)}${st ? ` · ${st}` : ''}</button>` : `<span class="chip not" style="--c:${colorOf(m.id)}">${esc(m.name)}${st ? ` · ${st}` : ''}</span>`; }).join('')}</div>`;
     });
   }
   const SPOT = new Map(); // wrap → { sel, used:Set, page }
@@ -428,6 +444,8 @@
   function spotOverview(t) {
     const ms = approved().filter(PRED[t]);
     if (!ms.length) return '<p class="muted" style="font-size:30px">아직 올라온 것이 없어요. 앱에서 저장하면 여기에 바로 떠요.</p>';
+    if (t === 'photo') return `<div class="sv-grid">${ms.map(m => { const p = photoOf(m.id).photo; return `<button data-spick="${m.id}"><img src="${esc(p.thumb || p.url)}" alt="">${esc(m.name)}</button>`; }).join('')}</div>`;
+    if (t === 'qa' || t === 'ptext') return `<div class="sv-wall">${ms.map(m => { const d = photoOf(m.id); return `<button data-spick="${m.id}" style="--c:${colorOf(m.id)}"><b>${esc(m.name)}</b>${esc(t === 'qa' ? d.memo || `질문 ${d.qa.length}개` : `「${d.title || '제목 없음'}」`).slice(0, 90)}</button>`; }).join('')}</div>`;
     if (t === 'img') return `<div class="sv-grid">${ms.map(m => { const p = (storyOf(m.id).parts || []).find(x => x.img && x.img.url); return `<button data-spick="${m.id}"><img src="${esc(p.img.thumb || p.img.url)}" alt="">${esc(m.name)}</button>`; }).join('')}</div>`;
     return `<div class="sv-wall">${ms.map(m => { const d = storyOf(m.id), b = BOARD.get(m.id) || {};
       const line = t === 'idea' ? `${d.card || ''}${d.idea ? ` — ${d.idea}` : ''}` : t === 'seed' ? [d.who, d.where, d.what].filter(Boolean).join(' · ') : t === 'text' ? `「${d.title || '제목 없음'}」` : `${b.npages || 0}쪽 · 그림 ${b.imgs || 0}장`;
@@ -439,6 +457,13 @@
     if (t === 'seed') v.innerHTML = `<p class="sv-k">${esc(name)}님의 이야기 씨앗 · ${esc(d.card || '')}</p><div class="sv-seed">${[['누가', d.who], ['어디서', d.where], ['무슨 일이', d.what], ['어떻게 끝날까', d.ending]].map(([k, x]) => `<div><b>${k}</b><span>${nl(x) || '—'}</span></div>`).join('')}</div>`;
     if (t === 'text') v.innerHTML = `<p class="sv-k">${esc(name)}님의 상상 이야기</p><h3 class="sv-title">${esc(d.title || '제목 없음')}</h3>${(d.parts || []).map((p, i) => `${i ? '<hr style="border:0;border-top:2px dashed #DCE3D3;margin:18px 0">' : ''}<p class="sv-text">${nl(p.text)}</p>`).join('')}`;
     if (t === 'img') v.innerHTML = `<p class="sv-k">${esc(name)}님 · 「${esc(d.title || '')}」</p><div class="sv-imgs">${(d.parts || []).filter(p => p.img && p.img.url).map(p => `<img src="${esc(p.img.url)}" alt="">`).join('')}</div>`;
+    if (t === 'photo') { const p = photoOf(id); v.innerHTML = `<p class="sv-k">${esc(name)}님의 사진</p><div class="sv-photo"><img src="${esc(p.photo.url)}" alt=""><p class="sv-idea">${nl(p.memo) || ''}</p></div>`; }
+    if (t === 'qa') { const p = photoOf(id); v.innerHTML = `<p class="sv-k">${esc(name)}님 · AI 질문과 대답</p>${p.photo ? `<img class="sv-thumb" src="${esc(p.photo.thumb || p.photo.url)}" alt="">` : ''}${p.memo ? `<p class="sv-idea" style="font-size:30px">${nl(p.memo)}</p>` : ''}<ol class="sv-qa">${(p.qa || []).filter(x => String(x.a || '').trim()).map(x => `<li><b>${esc(x.q)}</b><span>${nl(x.a)}</span></li>`).join('')}</ol>`; }
+    if (['pmine', 'pai', 'ptone', 'pshrink'].includes(t)) { const p = photoOf(id);
+      const body = t === 'pmine' ? p.mine : t === 'pai' ? (p.ai || p.text) : p.text;
+      const lab = { pmine: '3-1 내가 쓴 초안', pai: '3-2 AI가 구체화한 글', ptone: '3-3 내 말투로 고친 글', pshrink: `3-4 요약한 글 (${p.shrunk || ''})` }[t];
+      v.innerHTML = `<p class="sv-k">${esc(name)}님 · ${lab}</p>${p.photo ? `<img class="sv-thumb" src="${esc(p.photo.thumb || p.photo.url)}" alt="">` : ''}${t !== 'pmine' && p.title ? `<h3 class="sv-title">${esc(p.title)}</h3>` : ''}<p class="sv-text">${nl(body)}</p>`; }
+    if (t === 'ptext') { const p = photoOf(id); v.innerHTML = `<p class="sv-k">${esc(name)}님의 사진 이야기 · ${stepOf(id) || ''}</p>${p.photo ? `<img class="sv-thumb" src="${esc(p.photo.thumb || p.photo.url)}" alt="">` : ''}<h3 class="sv-title">${esc(p.title || '제목 없음')}</h3><p class="sv-text">${nl(p.text)}</p>${p.mine ? `<details class="sv-mine"><summary>3-1 내가 쓴 초안 보기</summary><p>${nl(p.mine)}</p></details>` : ''}`; }
     if (t === 'book') {
       v.innerHTML = '<p class="muted" style="font-size:28px">책을 불러오는 중…</p>';
       try {
@@ -491,7 +516,13 @@
     wrap.querySelector('.spot-name').textContent = nameOf(id); renderSpots(); spotView(wrap, wrap.dataset.spot, id);
   }
   document.addEventListener('click', e => {
-    const wrap = e.target.closest('.spotwrap'); if (!wrap) return;
+    const pv = e.target.closest('[data-pv]');
+    if (pv) { // 진행 현황의 이름 → 그 사람이 이 단계에서 한 것
+      const [t0, id] = pv.dataset.pv.split('|'), t = PV[t0] || t0;
+      $('#ansv').innerHTML = `<div class="ansv-in pvwrap" data-spot="${t}" style="--c:${colorOf(id)}"><div style="display:flex;justify-content:space-between;align-items:center"><p class="ansv-k">${esc(PLABEL[t0] || '')}</p><button class="btn" id="ansClose">닫기</button></div><div class="spot-v"></div></div>`;
+      const w = $('#ansv .pvwrap'); SPOT.set(w, { sel: id, used: new Set() }); $('#ansv').hidden = false; spotView(w, t, id); return;
+    }
+    const wrap = e.target.closest('.spotwrap, .pvwrap'); if (!wrap) return;
     const pk = e.target.closest('[data-spick]'); if (pk) { spotPick(wrap, pk.dataset.spick); return; }
     if (e.target.closest('[data-sall]')) { const st = SPOT.get(wrap); st.sel = null; wrap.querySelector('.spot-name').textContent = '?'; renderSpots(); return; }
     const bz = e.target.closest('[data-bz]'); if (bz) { const st = SPOT.get(wrap), k = +bz.dataset.bz; st.zoom = k < 0 ? null : k; if (k >= 0) st.page = k - (k % 2); drawBookV(wrap, nameOf(st.sel)); return; }

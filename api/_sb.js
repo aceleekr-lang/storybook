@@ -51,7 +51,7 @@ async function call(payload) {
 }
 
 // 결과를 정해진 모양으로 받기 — 태그 형식(<title>…</title>)이라 따옴표·줄바꿈이 많아도 깨지지 않음
-const untag = (raw, k) => { const m = raw.match(new RegExp(`<${k}>([\\s\\S]*?)</${k}>`)); return m ? m[1].trim() : null; };
+const untag = (raw, k) => { const m = raw.match(new RegExp(`<${k}>([\\s\\S]*?)(?:</${k}>|$)`)); return m ? m[1].replace(/<\/?[a-z0-9]*$/i, '').replace(/^\n+|\n+$/g, '') : null; }; // 앞뒤 줄바꿈만 정리(이어 쓰기에서 띄어쓰기 살림) // 닫는 태그 없이 끊겨도 쓴 데까지는 살림
 async function claudeJSON({ system, messages, max_tokens = 3000, schema }) {
   const keys = Object.keys(schema);
   const fmt = keys.map(k => schema[k] === 'scenes' ? '<scene><text>장면 글</text><pic>그림 묘사</pic></scene>  (장면 수만큼 반복)' : `<${k}>…</${k}>`).join('\n');
@@ -63,7 +63,7 @@ async function claudeJSON({ system, messages, max_tokens = 3000, schema }) {
     if (schema[k] === 'scenes') { out[k] = [...raw.matchAll(/<scene>([\s\S]*?)(?:<\/scene>|$)/g)].map(m => ({ text: untag(m[1], 'text') || '', pic: untag(m[1], 'pic') || '' })).filter(x => x.text); if (out[k].length) found++; }
     else { const v = untag(raw, k); out[k] = v || ''; if (v) found++; }
   });
-  if (found) return out;
+  if (found) { Object.defineProperty(out, 'cut', { value: j.stop_reason === 'max_tokens' }); return out; }
   try { return parseJSON(raw); } catch { const e = new Error(`형식 없음 (${j.stop_reason || ''}) ${raw.slice(0, 40)}`); e.status = 'fmt'; throw e; }
 }
 

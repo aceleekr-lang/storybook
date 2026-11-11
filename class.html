@@ -313,6 +313,22 @@ button.ivn:hover { color: var(--river); }
 .bkv-z h4 { margin: 0 0 12px; font-family: var(--book); font-size: 40px; } .bkv-z p { margin: 0; font-family: var(--book); font-size: 29px; line-height: 1.75; white-space: pre-wrap; }
 .bkv-pg .pn { position: absolute; bottom: 8px; left: 0; right: 0; text-align: center; font-size: 16px; color: #888; }
 .bkv-nav { display: flex; justify-content: center; gap: 14px; align-items: center; font-size: 26px; }
+
+/* 4회차 사진 이야기 · 이름 눌러 보기 */
+button.chip { cursor: pointer; font-family: inherit; }
+.ansv-in.pvwrap { max-height: 690px; }
+.pvwrap .spot-v { max-height: none; padding: 0; overflow: visible; }
+.sv-photo { display: grid; grid-template-columns: auto 1fr; gap: 30px; align-items: start; } .sv-photo img { max-height: 560px; max-width: 520px; border-radius: 14px; object-fit: contain; }
+.sv-thumb { float: right; width: 220px; max-height: 300px; object-fit: cover; border-radius: 12px; margin: 0 0 16px 24px; }
+.sv-qa { margin: 10px 0 0; padding-left: 36px; display: grid; gap: 16px; font-size: 30px; } .sv-qa b { display: block; color: var(--sub); font-family: var(--display); font-weight: 400; font-size: 26px; } .sv-qa span { line-height: 1.5; }
+.sv-mine { margin-top: 20px; background: #F4F1EA; border-radius: 14px; padding: 14px 20px; font-size: 26px; } .sv-mine summary { cursor: pointer; font-family: var(--display); color: var(--sub); } .sv-mine p { margin: 10px 0 0; line-height: 1.6; }
+.w4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-top: 18px; flex: 1; min-height: 0; }
+.w4c { background: #fff; border-radius: 22px; border-top: 10px solid var(--leaf); padding: 18px 18px 14px; display: grid; grid-template-rows: auto auto auto minmax(0, 1fr); gap: 6px; min-height: 0; position: relative; }
+.w4c > b { font-family: var(--display); font-weight: 400; font-size: 30px; color: var(--leaf); } .w4c h3 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 34px; } .w4c > p { margin: 0 0 6px; font-size: 22px; color: var(--sub); }
+.w4c.opt { border-top-style: dashed; } .w4c .prog { background: #F6F3EC; min-height: 0; overflow: hidden; } .w4c .prog > p { font-size: 20px; }
+.w4c .prog .chiprow { max-height: 300px !important; overflow-y: auto; }
+.prog.p4 { padding: 8px 16px; gap: 4px; font-size: 22px; } .prog.p4 .chiprow { max-height: 76px; gap: 6px; } .prog.p4 .chip { font-size: 22px; padding: 1px 10px; }
+.flow5 { grid-template-columns: repeat(4, 1fr) !important; }
 </style>
 
 </head>
@@ -873,6 +889,130 @@ button.ivn:hover { color: var(--river); }
     <section class="slide cover" data-sess="3" data-sec="마무리" data-time="21:00" data-note="수고하셨습니다.">
       <div class="kicker">3회차를 마칩니다</div>
       <h1>있을 법한 이야기가<br><em>가곡동을 넓혀요</em></h1>
+      <p class="note">가곡동 상상창고 2층 마을공작소 · 문의 070-4148-3373</p>
+      <svg class="land" viewBox="0 0 1600 120" preserveAspectRatio="none" aria-hidden="true"><path d="M0 70 Q200 20 420 60 T860 50 T1300 40 T1600 60 V120 H0Z" fill="#9CCB8A"/><path d="M0 95 Q400 70 800 92 T1600 85 V120 H0Z" fill="#6FAE6A"/></svg>
+    </section>
+
+
+    <!-- ===================== 4회차 (11/11 수) — 사진 한 장, 이야기 하나 · 작업 → 공유발표 네 번 ===================== -->
+    <section class="slide cover" data-sess="4" data-sec="대기" data-time="18:50" data-note="앱 새로고침 안내. 위 메뉴에 '사진 이야기'가 보이면 준비 끝. 휴대폰 사진첩에서 쓸 사진 한 장 골라 두기.">
+      <div class="kicker">AI를 활용한 가곡동 이야기 책 만들기</div>
+      <h1>4회차<br><em>사진 한 장, 이야기 하나</em></h1>
+      <div class="datebar">11월 11일(수) 저녁 7시 ~ 9시</div>
+      <div class="row" style="gap:28px;align-items:center;justify-content:center">
+        <div class="qrbox" style="padding:16px;border-width:3px"><div id="qr4" style="width:170px;height:170px"></div></div>
+        <p class="note" style="text-align:left;margin:0">앱을 새로고침해 주세요.<br>위 메뉴에 <b>사진 이야기</b>가 보이면 준비 끝!<br>쓰고 싶은 <b>사진 한 장</b>을 골라 두세요.</p>
+      </div>
+      <div class="live-n" data-live="signup"></div>
+      <svg class="land" viewBox="0 0 1600 120" preserveAspectRatio="none" aria-hidden="true"><path d="M0 70 Q200 20 420 60 T860 50 T1300 40 T1600 60 V120 H0Z" fill="#9CCB8A"/><path d="M0 95 Q400 70 800 92 T1600 85 V120 H0Z" fill="#6FAE6A"/></svg>
+    </section>
+
+    <section class="slide" data-sess="4" data-sec="오늘 흐름" data-time="19:00" data-note="설명은 이 한 장으로 끝. 사진 → 질문 → 글 → 책, 단계마다 발표.">
+      <span class="tag berry">오늘은 이렇게</span>
+      <h2 style="font-size:56px">사진 한 장으로 → 보여 주고, 네 번</h2>
+      <ol class="flow6 flow5">
+        <li><b>1</b><span>사진 고르기</span><small>올리기 · 손보기 · 그림으로</small><i>발표</i></li>
+        <li><b>2</b><span>AI 질문</span><small>사진을 보고 묻고 답하기</small><i>발표</i></li>
+        <li><b>3</b><span>이야기 쓰기</span><small>내 초안 → AI 구체화 → 내 말투</small><i>발표</i></li>
+        <li><b>4</b><span>책에 넣기</span><small>구성표 · 미리보기</small><i>발표</i></li>
+      </ol>
+    </section>
+
+    <section class="slide" data-sess="4" data-sec="1 · 사진 고르기" data-time="19:02" data-timer="12" data-note="사진 이야기 탭 → 사진 올리기 → 필요하면 사진 손보기(선명하게, 색 되살리기, 톤) → 사진 한 줄. 사진이 없으면 AI로 그림. 사진을 그림책 그림으로 바꿔도 돼요.">
+      <span class="tag leaf">1 · 사진 고르기 12분</span>
+      <h2 style="font-size:54px">내 사진 한 장 올리고 손보기</h2>
+      <div class="task">
+        <ol class="steps" style="gap:12px">
+          <li><span><b>사진 이야기</b> → <b>사진 올리기</b></span></li>
+          <li><span><b>사진 손보기</b> — 선명하게 · 흑백을 컬러로 · 사진 톤</span></li>
+          <li><span>그림으로 바꾸고 싶으면 <b>이 사진을 그림으로</b></span></li>
+          <li><span><b>사진 한 줄</b> — 언제 · 어디서 · 누구와</span></li>
+        </ol>
+        <div class="task-r"><div class="timer"><b>12:00</b><button data-t="go">시작</button><button class="ghost" data-t="reset">처음으로</button></div>
+          <div class="prog" data-prog="photo"></div></div>
+      </div>
+    </section>
+
+    <section class="slide" data-sess="4" data-sec="1 · 사진 발표" data-time="19:14" data-note="한 사람 30초~1분. '이 사진, 누가 찍었어요?' 한 가지만 물어봐 주세요.">
+      <span class="tag berry">발표 1 · 내 사진</span>
+      <div class="spotwrap" data-spot="photo"></div>
+    </section>
+
+    <section class="slide" data-sess="4" data-sec="2 · AI 질문" data-time="19:24" data-timer="12" data-note="AI에게 질문 받기 → 짧게라도 대답 → 질문 더 받기. 대답이 많을수록 초안이 내 이야기가 돼요.">
+      <span class="tag leaf">2 · AI 질문 12분</span>
+      <h2 style="font-size:54px">AI가 사진을 보고 물어요 — 짧게 대답해요</h2>
+      <div class="task">
+        <ol class="steps" style="gap:12px">
+          <li><span><b>AI에게 질문 받기</b> (질문 8개)</span></li>
+          <li><span>한두 줄씩 <b>대답</b> — 소리 · 냄새 · 그때 마음</span></li>
+          <li><span>더 떠오르면 <b>질문 더 받기</b></span></li>
+        </ol>
+        <div class="task-r"><div class="timer"><b>12:00</b><button data-t="go">시작</button><button class="ghost" data-t="reset">처음으로</button></div>
+          <div class="prog" data-prog="qa"></div></div>
+      </div>
+    </section>
+
+    <section class="slide" data-sess="4" data-sec="2 · 질문 발표" data-time="19:36" data-note="AI 질문 중 가장 대답하기 좋았던 것 하나를 골라 소개.">
+      <span class="tag berry">발표 2 · 질문과 대답</span>
+      <div class="spotwrap" data-spot="qa"></div>
+    </section>
+
+    <section class="slide titlecard" data-sess="4" data-sec="쉬는 시간" data-time="19:46" data-timer="10" data-note="10분 휴식.">
+      <span class="tag">쉬는 시간</span>
+      <h1>10분 쉬어 갈게요</h1>
+      <div class="timer"><b>10:00</b><button data-t="go">시작</button><button class="ghost" data-t="reset">처음으로</button></div>
+    </section>
+
+    <section class="slide" data-sess="4" data-sec="3 · 이야기 쓰기" data-time="19:56" data-timer="15" data-note="3-1 내가 초안(3~5줄) → 3-2 AI가 구체화(분량 고르기) → 3-3 내가 말투 고치기(말투·사진 속 한 가지·마지막 문장) → 3-4 길면 요약하기. 칸마다 이름을 누르면 그 사람이 그 단계에서 쓴 글이 떠요.">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:30px">
+        <div><span class="tag leaf">3 · 이야기 쓰기 15분</span>
+          <h2 style="font-size:50px;margin-top:14px">내가 쓰고 → AI가 살찌우고 → 내 말로</h2></div>
+        <div class="timer" style="flex:none"><b>15:00</b><button data-t="go">시작</button><button class="ghost" data-t="reset">처음으로</button></div>
+      </div>
+      <div class="w4">
+        <div class="w4c"><b>3-1</b><h3>내가 초안 쓰기</h3><p>생각나는 대로 3~5줄</p><div class="prog p4" data-prog="pmine"></div></div>
+        <div class="w4c"><b>3-2</b><h3>AI가 구체화하기</h3><p>분량 고르고 · 결말까지</p><div class="prog p4" data-prog="pai"></div></div>
+        <div class="w4c"><b>3-3</b><h3>내가 말투 고치기</h3><p>말투 · 사진 속 한 가지 · 마지막 문장</p><div class="prog p4" data-prog="ptone"></div></div>
+        <div class="w4c opt"><b>3-4</b><h3>길면 요약하기</h3><p>필요할 때만 · 한 쪽 / 한 장 / 두 장</p><div class="prog p4" data-prog="pshrink"></div></div>
+      </div>
+    </section>
+
+    <section class="slide" data-sess="4" data-sec="3 · 낭독" data-time="20:11" data-note="본인이 소리 내어 읽기. 듣는 분은 '가장 눈에 보인 장면' 한 가지씩.">
+      <span class="tag berry">발표 3 · 낭독</span>
+      <div class="spotwrap" data-spot="ptext"></div>
+    </section>
+
+    <section class="slide" data-sess="4" data-sec="4 · 책에 넣기" data-time="20:25" data-timer="10" data-note="내 책에 넣기 → 내 책 구성표(전체 짝수 확인) → 그림 칸은 사진 손보기나 '말한 대로 고치기'. 잘못 넣은 쪽은 휴지통에서 되살릴 수 있어요.">
+      <span class="tag leaf">4 · 책에 넣기 10분</span>
+      <h2 style="font-size:54px">내 책에 넣고 → 구성표로 짝수 맞추기</h2>
+      <div class="task">
+        <ol class="steps" style="gap:12px">
+          <li><span><b>내 책에 넣기</b> (사진 1쪽 + 글)</span></li>
+          <li><span><b>내 책 구성표</b> — 순서 · 짝수 확인</span></li>
+          <li><span>잘못 지웠으면 <b>휴지통</b>에서 되살리기</span></li>
+        </ol>
+        <div class="task-r"><div class="timer"><b>10:00</b><button data-t="go">시작</button><button class="ghost" data-t="reset">처음으로</button></div>
+          <div class="prog" data-prog="pbook"></div></div>
+      </div>
+    </section>
+
+    <section class="slide" data-sess="4" data-sec="4 · 책 발표" data-time="20:35" data-note="책을 넘기며 본인이 소개. 쪽을 누르면 크게 보여요.">
+      <span class="tag berry">발표 4 · 내 책 넘겨 보기</span>
+      <div class="spotwrap" data-spot="book"></div>
+    </section>
+
+    <section class="slide" data-sess="4" data-sec="마무리" data-time="20:50" data-note="앱 '오늘 수업' → 한 줄 소감. 다음 주 화요일 5회차.">
+      <span class="tag">마무리</span>
+      <h2 style="font-size:52px">오늘 한 줄 소감 · 다음 주 5회차</h2>
+      <div class="task" style="grid-template-columns:1.4fr 1fr;grid-template-rows:minmax(0,1fr);align-items:stretch;flex:1;min-height:0">
+        <div class="wall" data-wall="s4_exit" style="grid-template-columns:repeat(2,1fr);height:100%"></div>
+        <div class="nx"><h3>5회차 · 11월 17일(화) 7시</h3><ul><li>자유 주제</li><li>시 · 산문 · 수필 · 동화 중 골라 2~4쪽</li></ul><h3 style="margin-top:10px">집에서</h3><ul><li>쓰고 싶은 <b>주제 하나</b> 떠올려 오기</li></ul></div>
+      </div>
+    </section>
+
+    <section class="slide cover" data-sess="4" data-sec="마무리" data-time="21:00" data-note="수고하셨습니다.">
+      <div class="kicker">4회차를 마칩니다</div>
+      <h1>사진 한 장에<br><em>이야기가 숨어 있었어요</em></h1>
       <p class="note">가곡동 상상창고 2층 마을공작소 · 문의 070-4148-3373</p>
       <svg class="land" viewBox="0 0 1600 120" preserveAspectRatio="none" aria-hidden="true"><path d="M0 70 Q200 20 420 60 T860 50 T1300 40 T1600 60 V120 H0Z" fill="#9CCB8A"/><path d="M0 95 Q400 70 800 92 T1600 85 V120 H0Z" fill="#6FAE6A"/></svg>
     </section>

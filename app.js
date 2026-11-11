@@ -308,7 +308,7 @@
   function tabsFor() {
     const t = [['today', '오늘 수업']];
     if (!isStaff() || (S.me.tracks || []).length) t.push(['write', '내 책 쓰기']);
-    t.push(['map', '이야기 지도'], ['interview', 'AI 인터뷰'], ['story', '상상 이야기'], ['style', '그림체']);
+    t.push(['map', '이야기 지도'], ['interview', 'AI 인터뷰'], ['story', '상상 이야기'], ['photo', '사진 이야기'], ['style', '그림체']);
     if (!isStaff() || (S.me.tracks || []).length) t.push(['album', '사진첩']);
     if (isStaff() || (S.me.tracks || []).length) t.push(['docs', '교육자료']);
     if (isStaff()) t.push(['board', '현황판'], ['photos', '회차 사진'], ['book', '책 만들기']);
@@ -752,9 +752,13 @@
         ${t.text === 'prose' || t.text === 'lead' ? `<label class="check small"><input type="checkbox" id="pIndent" ${pg.indent === false ? '' : 'checked'}> 문단 첫 칸 들여쓰기 <small>목록이나 짧은 줄로 쓴 글은 끄면 더 가지런해요</small></label>` : ''}
         <div class="row between tx-tools"><span class="muted" id="cnt">${(pg.text || '').replace(/\s/g, '').length}자</span>
           <div class="row">${undo && undo.pg === pg ? '<button class="btn btn-small btn-ghost" data-act="undo">교정 되돌리기</button>' : ''}<button class="btn btn-small btn-ai" data-act="proof">AI 교정 받기</button></div></div>
-        <details class="e-sec fdet" ${pg.style && (pg.style.font || pg.style.size || pg.style.bold) ? 'open' : ''}><summary>이 쪽의 글꼴·크기·굵게 <small>${pg.style && pg.style.font ? esc(FONT.get(pg.style.font).name) : '기본'}${pg.style && pg.style.size ? ` ${pg.style.size}pt` : ''}${pg.style && pg.style.bold ? ' 굵게' : ''}</small></summary>
+        <details class="e-sec fdet" ${pg.style && (pg.style.font || pg.style.size || pg.style.bold || pg.style.ls || pg.style.lh || pg.style.al) ? 'open' : ''}><summary>이 쪽의 글 모양 <small>글꼴·크기·자간·행간·정렬 — ${pg.style && pg.style.font ? esc(FONT.get(pg.style.font).name) : '기본'}${pg.style && pg.style.size ? ` ${pg.style.size}pt` : ''}${pg.style && pg.style.bold ? ' 굵게' : ''}</small></summary>
           ${fontControls('p', pg.style, `비우면 틀 기본 크기 (${{ prose: track === 'small' ? '12.5' : '10.8', lead: '10.5', cap: '9', box: '10.5', poem: track === 'small' ? '13' : '11.5', diary: '15.5', quote: '17' }[t.text] || '10.8'}pt)`)}
-          <p class="tip">글 칸 전체에 적용돼요. 굵게는 굵은 글씨체가 따로 있는 글꼴에서만 켤 수 있어요.</p></details>
+          <div class="fontc"><label class="f">자간 <small>글자 사이</small><select id="pLs">${[['', '기본'], ['-0.04', '좁게'], ['-0.02', '조금 좁게'], ['0.03', '조금 넓게'], ['0.06', '넓게']].map(([k, l]) => `<option value="${k}" ${String((pg.style || {}).ls || '') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+            <label class="f">행간 <small>줄 사이</small><select id="pLh">${[['', '기본'], ['1.6', '촘촘하게'], ['1.72', '조금 촘촘하게'], ['2', '넉넉하게'], ['2.2', '아주 넉넉하게']].map(([k, l]) => `<option value="${k}" ${String((pg.style || {}).lh || '') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+            <label class="f">정렬<select id="pAl"><option value="">양쪽 맞춤 (책 기본)</option><option value="left" ${(pg.style || {}).al === 'left' ? 'selected' : ''}>왼쪽 맞춤 — 글자 사이가 벌어지지 않아요</option></select></label></div>
+          <p class="tip">글 칸 전체에 적용돼요. 글자 사이가 듬성듬성 벌어져 보이면 <b>정렬을 왼쪽 맞춤</b>으로 바꾸거나 <b>자간을 조금 좁게</b> 해 보세요. 굵게는 굵은 글씨체가 따로 있는 글꼴에서만 켤 수 있어요.</p>
+          <button type="button" class="btn btn-small" data-act="styleAll">이 모양을 같은 글의 모든 쪽에 맞추기</button></details>
         ${t.fr.length ? `<div class="e-sec"><p class="f-l">그림·사진 ${t.optional ? '<small>(없어도 돼요)</small>' : ''}</p><div class="slots">${t.fr.map((fr, i) => {
           const im = imgs[i];
           if (!im || !im.url) return `<div class="slot empty"><b>${t.fr.length > 1 ? `${i + 1}번 ` : ''}사진·그림</b>
@@ -762,7 +766,7 @@
           const lv = Book.level(Book.dpi(im, fr));
           return `<div class="slot"><img src="${src(im)}" alt="">
             <span class="q q-${lv}">${{ ok: '인쇄하기 좋아요', warn: '조금 작아요', bad: '너무 작아요' }[lv] || ''}</span>
-            <div class="slot-btns"><button class="btn btn-small" data-pick="${i}">바꾸기</button><button class="btn btn-small btn-ai" data-gen="${i}">AI로 다시 그리기</button>${rotBtns(i)}
+            <div class="slot-btns"><button class="btn btn-small" data-pick="${i}">바꾸기</button><button class="btn btn-small btn-ai" data-gen="${i}">AI로 다시 그리기</button><button class="btn btn-small" data-tune="${i}">사진 손보기</button>${rotBtns(i)}
             <button class="btn btn-small" data-fit="${i}">${im.fit === 'contain' ? '칸 채우기' : '전체 보이기'}</button>
             <button class="btn btn-small btn-ghost" data-rm="${i}">빼기</button></div></div>`;
         }).join('')}</div>${hidden ? `<p class="muted">이 틀에서는 그림 ${hidden}장이 안 보여요. 다른 틀로 바꾸면 다시 보여요.</p>` : ''}</div>` : ''}`;
@@ -868,6 +872,7 @@
     v.onchange = async e => {
       const id = e.target.id, pg = page();
       if (id === 'pIndent') { pg.indent = e.target.checked; changed(); drawStage(); redrawThumb(); return; }
+      if (id === 'pLs' || id === 'pLh' || id === 'pAl') { pg.style = pg.style || {}; const k = { pLs: 'ls', pLh: 'lh', pAl: 'al' }[id]; if (e.target.value) pg.style[k] = k === 'al' ? e.target.value : +e.target.value; else delete pg.style[k]; changed(); drawStage(); redrawThumb(); return; }
       if (id === 'pFont' || id === 'pBold') { pg.style = pg.style || {}; await fontChanged('p', pg.style); return; }
       if (id === 'eFont' || id === 'eBold') { const el = (pg.els || [])[selEl]; if (el) await fontChanged('e', el); return; }
       if (e.target.id !== 'okBook') return;
@@ -943,6 +948,8 @@
       const setImg = (i, im) => { pg.imgs = pg.imgs || []; pg.imgs[i] = im; changed(); drawAll(); };
       const pk = e.target.closest('[data-pick]');
       if (pk) { const im = await photoPicker({ owner: other ? arg.id : '', track }); if (im) setImg(+pk.dataset.pick, im); return; }
+      const tu = e.target.closest('[data-tune]');
+      if (tu) { const i0 = +tu.dataset.tune, cur0 = (pg.imgs || [])[i0]; if (!cur0) return; const im = await window.YSX.photoTools({ url: cur0.url, owner: other ? arg.id : '' }); if (im) setImg(i0, Object.assign(im, { fit: cur0.fit || 'cover' })); return; }
       const gn = e.target.closest('[data-gen]');
       if (gn) {
         const i = +gn.dataset.gen;
@@ -1015,19 +1022,30 @@
         [W.pages[sel], W.pages[j]] = [W.pages[j], W.pages[sel]]; sel = j; changed(); drawAll();
       }
       if (act === 'dup') addPage(JSON.parse(JSON.stringify(pg)));
+      if (act === 'styleAll') { // 같은 글(작품)로 이어진 쪽들에 글 모양 맞추기
+        const so = window.YSX.secOf, sc = so(pg); let a0 = sel, b0 = sel;
+        if (sc !== 'etc') { while (a0 > 0 && so(W.pages[a0 - 1]) === sc) a0--; while (b0 < W.pages.length - 1 && so(W.pages[b0 + 1]) === sc) b0++; }
+        else { while (a0 > 0 && W.pages[a0 - 1].tpl === 'text') a0--; while (b0 < W.pages.length - 1 && W.pages[b0 + 1].tpl === 'text') b0++; }
+        let n = 0; for (let k = a0; k <= b0; k++) if (k !== sel) { W.pages[k].style = pg.style ? JSON.parse(JSON.stringify(pg.style)) : undefined; W.pages[k].indent = pg.indent; n++; }
+        changed(); drawAll(); toast(n ? `${n}쪽에 같은 글 모양을 맞췄어요.` : '맞출 다른 쪽이 없어요.'); return;
+      }
       if (act === 'del') {
         if (!(await ask(`${sel + 1}번째 쪽을 지울까요?`, '지운 쪽은 휴지통에 모여서 되살릴 수 있어요.', '지우기'))) return;
         await window.YSX.trashPut(other ? arg.id : '', [{ i: sel, pg: JSON.parse(JSON.stringify(W.pages[sel])) }], '내 책 쓰기에서 지움');
         W.pages.splice(sel, 1); sel = Math.max(0, sel - 1); changed(); drawAll();
       }
       if (act === 'split') {
-        const cut = await Book.fitLength(pg, track);
+        let cut = await Book.fitLength(pg, track);
         const text = String(pg.text || '');
+        if (cut < text.length && /\S/.test(text[cut - 1] || '') && /\S/.test(text[cut] || '')) { const sp = text.lastIndexOf(' ', cut); if (sp > cut * .8) cut = sp; } // 낱말 가운데서 자르지 않음
         const rest = text.slice(cut).replace(/^\s+/, '');
         if (!rest) return;
-        pg.text = text.slice(0, cut).replace(/\s+$/, '');
+        const atPara = /\n\s*$/.test(text.slice(0, cut)) || /^[ \t]*\n/.test(text.slice(cut)); // 문단 사이에서 잘렸는지
+        const oldNext = !!pg.contNext; pg.text = text.slice(0, cut).replace(/\s+$/, ''); pg.contNext = !atPara;
         const kind = Book.tpl(pg.tpl).text;
-        addPage({ tpl: kind === 'poem' ? 'poem' : kind === 'diary' ? 'diary' : 'text', text: rest });
+        // 새 쪽은 이 쪽의 글꼴·크기·자간·행간·정렬·들여쓰기와 작품 구분을 그대로 물려받음
+        addPage({ tpl: kind === 'poem' ? 'poem' : kind === 'diary' ? 'diary' : 'text', text: rest, cont: !atPara, contNext: oldNext,
+          style: pg.style ? JSON.parse(JSON.stringify(pg.style)) : undefined, indent: pg.indent, sec: pg.sec, hint: pg.hint ? pg.hint.replace(/( \(이어짐\))?$/, ' (이어짐)') : undefined });
         toast('넘친 글을 다음 쪽으로 옮겼어요.');
       }
       if (act === 'proof') {
