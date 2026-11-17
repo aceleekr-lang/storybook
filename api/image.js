@@ -28,7 +28,9 @@ module.exports = async function handler(req, res) {
   if (!q) return;
 
   // 2) 바탕 사진 불러오기 (data:URL 또는 우리 Supabase 저장소 주소만)
-  let srcBlob = null;
+  let srcBlob = null, maskBlob = null;
+  const mk = String(body.mask || '').match(/^data:image\/png;base64,(.+)$/); // 부분만 고치기: 투명하게 칠한 곳만 고친다
+  if (mk && mode === 'revise') maskBlob = new Blob([Buffer.from(mk[1], 'base64')], { type: 'image/png' });
   if (src) {
     try {
       if (src.startsWith('data:image/')) { const m = src.match(/^data:(image\/[\w+]+);base64,(.+)$/); srcBlob = new Blob([Buffer.from(m[2], 'base64')], { type: m[1] }); }
@@ -47,7 +49,7 @@ module.exports = async function handler(req, res) {
     style ? `그림체: ${style}` : '그림체: 따뜻하고 부드러운 그림책 삽화.',
     scene ? `더 바라는 점: ${scene}` : '', KEEP
   ].filter(Boolean).join('\n\n') : mode === 'revise' ? [
-    '첨부한 그림을 아래 요청대로 고친다. 요청하지 않은 부분(그림체·구도·인물·색감)은 최대한 그대로 둔다.',
+    maskBlob ? '첨부한 그림에서 마스크로 표시한 부분만 아래 요청대로 고친다. 표시하지 않은 부분은 한 점도 바꾸지 않고, 고친 부분이 둘레의 그림체·빛·색감과 자연스럽게 이어지게 한다.' : '첨부한 그림을 아래 요청대로 고친다. 요청하지 않은 부분(그림체·구도·인물·색감)은 최대한 그대로 둔다.',
     `고칠 점: ${scene}`, KEEP
   ].join('\n\n') : mode === 'colorize' ? [
     '첨부한 옛 사진(흑백이거나 색이 바랜 사진)에 그 시대에 맞는 자연스러운 색을 입혀 복원한다. 사람 얼굴·몸짓·옷·배경·구도는 바꾸지 않고, 그림처럼 바꾸지 말고 사진 그대로의 질감을 유지한다. 새 사람이나 물건을 더하지 않는다.',
@@ -75,6 +77,7 @@ module.exports = async function handler(req, res) {
           const fd = new FormData();
           Object.entries(req1).forEach(([k, v]) => fd.append(k, String(v)));
           fd.append('image', srcBlob, srcBlob.type === 'image/png' ? 'src.png' : 'src.jpg');
+          if (maskBlob) fd.append('mask', maskBlob, 'mask.png');
           r = await fetch('https://api.openai.com/v1/images/edits', { method: 'POST', headers: { Authorization: `Bearer ${OPENAI_API_KEY}` }, body: fd });
         } else r = await fetch('https://api.openai.com/v1/images/generations', {
           method: 'POST', headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, 'Content-Type': 'application/json' }, body: JSON.stringify(req1)

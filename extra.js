@@ -24,8 +24,8 @@
   const aspectOf = fr => { if (!fr) return 'portrait'; const r = fr[0] / fr[1]; return r > 1.15 ? 'landscape' : r < 0.87 ? 'portrait' : 'square'; };
   const b64Blob = (b64, type) => { const bin = atob(b64); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new Blob([u], { type }); };
   // 그림을 만들어 저장소에 올리고 사진첩에 담음 → {url, thumb, w, h, fit}
-  async function makeImage({ prompt, style, aspect, owner, mode = 'draw', src = '' }) {
-    const j = await post(C.imageUrl || '/api/image', { prompt, style, aspect, owner: owner || '', mode, src });
+  async function makeImage({ prompt, style, aspect, owner, mode = 'draw', src = '', mask = '' }) {
+    const j = await post(C.imageUrl || '/api/image', { prompt, style, aspect, owner: owner || '', mode, src, ...(mask ? { mask } : {}) });
     const im = { ...(await store(await encode(b64Blob(j.b64, j.mime || 'image/jpeg')))), fit: 'cover', ai: true };
     await toAlbum(im, owner || '');
     return { im, left: j.left };
@@ -60,6 +60,47 @@
   const detText = d => DETAIL.filter(g => d[g.k]).map(g => `${g.label}: ${d[g.k]}`).join(', ');
 
   // 그림 만들기 창. 쓸 그림을 고르면 그 그림을, 닫으면 null (album: true면 만든 마지막 그림)
+  // 그림의 일부만 고치기: 고칠 곳을 칠하면(마스크) 그 부분만 바꾸고 나머지는 그대로
+  async function partEdit(img, owner = '') {
+    if (!img || !img.url) return null;
+    if (!aiOk() && !(await askAi())) return null;
+    return new Promise(resolve => {
+      let done = false; const fin = v => { if (!done) { done = true; resolve(v); } d.close(); };
+      const d = modal(`<h2>부분만 고치기</h2>
+        <p class="muted">고칠 곳을 손가락이나 마우스로 <b>칠하고</b>, 어떻게 바꿀지 적어요. 칠하지 않은 곳은 그대로 남아요.</p>
+        <div class="pe-wrap"><img id="peImg" alt="고칠 그림"><canvas id="peCv" aria-label="고칠 곳 칠하기"></canvas></div>
+        <div class="row" style="gap:.5rem;flex-wrap:wrap;align-items:center;margin-top:.5rem"><span class="muted">붓</span><div class="seg-btns" id="peSz">${[['.03', '가늘게'], ['.06', '보통'], ['.11', '굵게']].map(([k, l]) => `<button type="button" data-sz="${k}" aria-pressed="${k === '.06'}">${l}</button>`).join('')}</div><button type="button" class="btn btn-small btn-ghost" id="peClr">칠한 것 지우기</button></div>
+        <label class="f">칠한 곳을 어떻게 바꿀까요<input id="peSay" maxlength="300" placeholder="예) 이 자리에 누렁이 강아지를, 이 하늘을 노을빛으로, 이 사람을 웃는 얼굴로"></label>
+        <p class="muted small" id="peMsg"></p><p class="err" id="peErr" role="alert"></p>
+        <div class="row end"><button class="btn btn-ghost" data-close>닫기</button><button class="btn" id="peUse" hidden>이 그림 쓰기</button><button class="btn btn-main" id="peGo">칠한 곳 고치기</button></div>`, 'm-gen m-pe');
+      d.addEventListener('close', () => { if (!done) { done = true; resolve(null); } });
+      let cur = img, W = 0, H = 0, painted = false, sz = .06, down = false, lx = 0, ly = 0;
+      const im = $('#peImg', d), cv = $('#peCv', d), cx = cv.getContext('2d');
+      const load = u => { im.onload = () => { W = im.naturalWidth; H = im.naturalHeight; cv.width = W; cv.height = H; cx.clearRect(0, 0, W, H); painted = false; }; im.src = u; };
+      load(cur.url);
+      const pt = e => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.height * H]; };
+      const dot = (x, y) => { cx.fillStyle = '#FF2D78'; cx.strokeStyle = '#FF2D78'; cx.lineCap = 'round'; cx.lineWidth = sz * Math.max(W, H); cx.beginPath(); cx.moveTo(lx, ly); cx.lineTo(x, y); cx.stroke(); lx = x; ly = y; painted = true; };
+      cv.addEventListener('pointerdown', e => { if (!W) return; e.preventDefault(); $('#peErr', d).textContent = ''; cv.setPointerCapture(e.pointerId); down = true; [lx, ly] = pt(e); dot(lx, ly); });
+      cv.addEventListener('pointermove', e => { if (down) { e.preventDefault(); dot(...pt(e)); } });
+      ['pointerup', 'pointercancel'].forEach(k => cv.addEventListener(k, () => { down = false; }));
+      $('#peSz', d).onclick = e => { const b = e.target.closest('[data-sz]'); if (!b) return; sz = +b.dataset.sz; $$('[data-sz]', d).forEach(x => x.setAttribute('aria-pressed', x === b)); };
+      $('#peClr', d).onclick = () => { cx.clearRect(0, 0, W, H); painted = false; };
+      $('#peUse', d).onclick = () => fin(cur);
+      $('#peGo', d).onclick = async () => {
+        const say = $('#peSay', d).value.trim(), err = $('#peErr', d); err.textContent = '';
+        if (!painted) { err.textContent = '먼저 그림에서 고칠 곳을 칠해 주세요.'; return; }
+        if (say.length < 2) { err.textContent = '칠한 곳을 어떻게 바꿀지 적어 주세요.'; return; }
+        const m = document.createElement('canvas'); m.width = W; m.height = H; const mx = m.getContext('2d');
+        mx.fillStyle = '#000'; mx.fillRect(0, 0, W, H); mx.globalCompositeOperation = 'destination-out'; mx.drawImage(cv, 0, 0); // 칠한 곳 = 투명 = 고칠 곳
+        const go = $('#peGo', d); go.disabled = true; $('#peMsg', d).textContent = '칠한 곳을 고치는 중이에요… 30초~1분쯤 걸려요.';
+        try { const r = await makeImage({ prompt: say, aspect: W > H * 1.1 ? 'landscape' : H > W * 1.1 ? 'portrait' : 'square', owner, mode: 'revise', src: cur.url, mask: m.toDataURL('image/png') });
+          cur = r.im; load(cur.url); $('#peUse', d).hidden = false; $('#peMsg', d).textContent = `고쳤어요${r.left != null ? ` (오늘 ${r.left}장 남음)` : ''}. 더 고치려면 다시 칠하고 적어요.`; }
+        catch (e2) { err.textContent = e2.message; $('#peMsg', d).textContent = ''; }
+        finally { go.disabled = false; }
+      };
+    });
+  }
+
   async function genImage({ owner = '', frame = null, scene = '', text = '', whole = '', hint = '', album = false, photo = null } = {}) {
     if (!aiOk() && !(await askAi())) return null;
     let st, left;
@@ -113,7 +154,7 @@
       $('#gSrcX', d).onclick = () => { srcData = ''; showSrc(); };
       if (photo && photo.url) toData(photo.url).then(x => { srcData = x; showSrc(); }).catch(() => {});
       // 만든 그림을 말로 고치기
-      const fixRow = () => `<div class="gfix"><label class="f">이 그림 고치기 <small>고칠 점만 적어요. 나머지는 그대로 둬요</small><input id="gFix" placeholder="예) 하늘을 노을빛으로, 고양이를 한 마리 더, 할머니가 웃게"></label><button type="button" class="btn btn-ai" id="gFixGo">말한 대로 고치기</button></div>`;
+      const fixRow = () => `<div class="gfix"><label class="f">이 그림 고치기 <small>고칠 점만 적어요. 나머지는 그대로 둬요</small><input id="gFix" placeholder="예) 하늘을 노을빛으로, 고양이를 한 마리 더, 할머니가 웃게"></label><button type="button" class="btn btn-ai" id="gFixGo">말한 대로 고치기</button><button type="button" class="btn" id="gPart">부분만 고치기</button></div>`;
       d.addEventListener('click', async e => {
         if (!e.target.closest('#gFixGo') || !last) return;
         const say = $('#gFix', d).value.trim(); if (say.length < 2) { $('#gErr', d).textContent = '어떻게 고칠지 적어 주세요.'; return; }
@@ -124,6 +165,9 @@
         catch (err) { $('#gErr', d).textContent = err.message; const w = $('.gen-wait', out); if (w) w.remove(); b.disabled = false; }
         finally { $('#gGo', d).textContent = goLabel(); }
       });
+      d.addEventListener('click', async e => { if (!e.target.closest('#gPart') || !last) return;
+        const r = await partEdit(last, owner); if (!r) return; last = r;
+        $('#gOut', d).innerHTML = `<img src="${esc(last.url)}" alt="고친 그림"><p class="muted small">칠한 곳만 고친 그림이에요.</p>${fixRow()}`; $('#gGo', d).textContent = goLabel(); });
       $('#gUse', d).onclick = () => fin(last);
       $('#gGo', d).onclick = async () => {
         const prompt = $('#gP', d).value.trim();
@@ -181,7 +225,7 @@
     { k: 'essay', name: '수필', no: 2, min: 1, max: 2, how: '한 쪽, 넘치면 둘째 쪽 아래에 그림' },
     { k: 'story', name: '상상 그림 이야기', no: 3, min: 2, max: 4, how: '세로 그림 + 글, 장면마다 두 쪽' },
     { k: 'photo', name: '사진 이야기', no: 4, min: 2, max: 4, how: '내 사진 또는 AI 그림 + 이야기' },
-    { k: 'free', name: '자유 주제', no: 5, min: 2, max: 4, how: '시·산문·수필·동화 중 골라서' }
+    { k: 'free', name: '자유 주제', no: 5, min: 2, max: 4, how: '시·소설·수필·동화 중 골라서' }
   ];
   const secOf = p => p.sec || (/작가 소개|자기소개|나를 소개/.test(p.hint || p.head || '') ? 'intro' : /수필/.test(p.hint || '') ? 'essay' : /상상/.test(p.hint || '') ? 'story' : /사진 이야기/.test(p.hint || '') ? 'photo' : /자유/.test(p.hint || '') ? 'free' : 'etc');
   const secRank = p => { const i = SECS.findIndex(x => x.k === secOf(p)); return i < 0 ? 99 : i; };
@@ -1105,12 +1149,15 @@ ${pts.map(([x, y, n]) => `<g transform="translate(${x} ${y})"><circle r="32" fil
   const SYMBOLS = [['🚪', '문'], ['🔑', '열쇠'], ['🐦', '새'], ['🌳', '나무'], ['🌊', '물결'], ['🌉', '다리'], ['🕯️', '촛불'], ['⏰', '시계'], ['🛤️', '철길'], ['🌙', '달'], ['⛵', '배'], ['🌱', '새싹'],
     ['☂️', '우산'], ['✉️', '편지'], ['🏠', '집'], ['⛰️', '산'], ['🔥', '불씨'], ['🌸', '꽃'], ['🦋', '나비'], ['🐟', '물고기'], ['🧭', '나침반'], ['🎈', '풍선'], ['🌧️', '비'], ['⭐', '별']];
   const symOf = n => (SYMBOLS.find(x => x[1] === n) || ['✦', n])[0];
-  const FORMS5 = ['시', '산문', '수필', '동화'];
+  const FORMS5 = ['시', '소설', '수필', '동화'];
   const RATIOS = ['사실 90 상상 10', '사실 70 상상 30', '사실 50 상상 50', '사실 30 상상 70'];
   VIEWS.mind = async v => {
     const D = Object.assign({ picks: [], tarot: [], qa: [], reading: '', themes: [], theme: '', form: '', ratio: '사실 70 상상 30', len: 'full', aidraft: '', mine: '', title: '', text: '', ai: '', toneDone: false, review: null, marked: '', alt: null, shrunk: '', prev: '', img: null, inBook: false },
       ((await api('answer_get')).answers[FREE_ACT] || {}).data);
-    let saveT = null, deck = [], shuffled = false;
+    if (D.form === '산문') D.form = '소설'; (D.themes || []).forEach(t => { if (t.form === '산문') t.form = '소설'; }); if (D.alt && D.alt.form === '산문') D.alt.form = '소설';
+    if (!Array.isArray(D.imgs)) D.imgs = D.img && D.img.url ? [{ ...D.img, after: 0 }] : []; // 그림 여러 장 · 글 사이 자리(after = 앞에 오는 글 쪽 수)
+    const syncImg = () => { D.img = D.imgs[0] || null; };
+    let saveT = null, deck = [], shuffled = false, nTP = 1;
     const T = window.TAROT || [], POS = window.TAROT_POS || ['과거', '현재', '미래'];
     const card = n => T.find(x => x.n === n) || { n, ko: '?', keys: '', story: '' };
     const svState = (t, bad) => $$('.svstate', v).forEach(el => { el.textContent = t; el.classList.toggle('bad', !!bad); });
@@ -1151,12 +1198,12 @@ ${pts.map(([x, y, n]) => `<g transform="translate(${x} ${y})"><circle r="32" fil
             <div class="themes">${D.themes.map((t, i) => `<button class="theme ${D.theme === t.title ? 'on' : ''}" data-th="${i}"><b>${esc(t.title)}</b><span>${esc(t.form)} · ${esc(t.ratio)}</span><small>${esc(t.why)}</small></button>`).join('')}</div>` : ''}
           ${q ? `<div class="theme-set">
             <label class="f" for="mTheme">내 주제<input id="mTheme" data-k="theme" value="${esc(D.theme)}" placeholder="예) 철길 너머로 날아간 새"></label>
-            <div class="f"><span>형식</span><div class="seg-btns" id="mForm">${FORMS5.map(f => `<button type="button" data-form="${f}" aria-pressed="${D.form === f}">${f}</button>`).join('')}</div></div>
+            <div class="f"><span>형식</span><div class="seg-btns" id="mForm">${FORMS5.map(f => `<button type="button" data-form="${f}" aria-pressed="${D.form === f}">${f === '소설' ? '짧은 소설' : f}</button>`).join('')}</div></div>
             <label class="f" for="mRatio">사실과 상상<select id="mRatio">${RATIOS.map(r => `<option ${D.ratio === r ? 'selected' : ''}>${r}</option>`).join('')}</select></label></div>` : ''}</section>
         <section class="card ${themeOk ? '' : 'dim'}"><h2 class="h2">③ 쓰기 <small>${themeOk ? `「${esc(D.theme)}」 · ${esc(D.form)} · ${esc(D.ratio)}` : '주제와 형식을 먼저 정해요'}</small></h2>
           <ol class="wsteps">
             <li class="ws ${D.aidraft ? 'done' : themeOk ? 'now' : ''}"><div class="ws-h"><b>3-1</b><span>AI 초안 받기</span>${D.aidraft ? '<i>✓</i>' : ''}</div>
-              <p class="muted">타로 카드·대답·주제로 AI가 ${esc(D.form || '글')}의 짧은 뼈대(300~500자)를 써 줘요. 내 대답의 말은 <b>하나도 그대로 쓰지 않고</b>(이름·지명만 빼고), 인터뷰에서 느낀 이야기와 마음을 <b>문학적인 말로 새로 지어</b> 보여 줘요. 다시 받으면 다른 방식으로 엮어요.</p>
+              <p class="muted">타로 카드·대답·주제로 AI가 ${esc(D.form || '글')} 한 편을 결말까지 완결해서 써 줘요 (${({ 시: '600~800자', 소설: '1,300~1,600자', 동화: '700~1,000자' })[D.form] || '1,000~1,400자'}). 길면 3-5에서 1~4쪽으로 줄일 수 있어요. 내 대답의 말은 <b>하나도 그대로 쓰지 않고</b>(이름·지명만 빼고), 인터뷰에서 느낀 이야기와 마음을 <b>문학적인 말로 새로 지어</b> 보여 줘요. 다시 받으면 다른 방식으로 엮어요.</p>
               <button class="btn btn-ai" id="mDraft" ${themeOk ? '' : 'disabled'}>${D.aidraft ? 'AI 초안 다시 받기' : 'AI 초안 받기'}</button>
               ${D.draftHow ? `<p class="mhow">엮은 방식 · ${esc(D.draftHow)}</p>` : ''}${D.aidraft ? `<details class="aid"><summary>AI가 처음 쓴 초안 보기</summary><p>${esc(D.aidraft).replace(/\n/g, '<br>')}</p></details>` : ''}</li>
             <li class="ws ${editedOk() ? 'done' : D.aidraft || mineOk() ? 'now' : ''}"><div class="ws-h"><b>3-2</b><span>내가 다듬기</span>${editedOk() ? '<i>✓</i>' : ''}</div>
@@ -1176,9 +1223,9 @@ ${pts.map(([x, y, n]) => `<g transform="translate(${x} ${y})"><circle r="32" fil
               <div class="row" style="flex-wrap:wrap;gap:.4rem">
                 <button class="btn btn-small btn-ai" id="mReview">AI 첨삭 받기</button>
                 <button class="btn btn-small btn-ai" id="mMarks">사실·상상 표시 보기</button>
-                <button class="btn btn-small btn-ai" data-shrink="p1">한 쪽으로</button><button class="btn btn-small btn-ai" data-shrink="p2">한 장(2쪽)으로</button><button class="btn btn-small btn-ai" data-shrink="p4">두 장(4쪽)으로</button>
+                <span class="muted small" style="align-self:center">줄이기</span>${[1, 2, 3, 4].map(k => `<button class="btn btn-small btn-ai" data-shrink="p${k}">${k}쪽으로</button>`).join('')}
                 ${D.prev ? '<button class="btn btn-small btn-ghost" id="pUndo">바꾸기 전으로 되돌리기</button>' : ''}</div>
-              <div class="f" style="margin-top:.5rem"><span>형식 바꿔 보기 <small>같은 내용을 다른 형식으로 써 보고 비교해요</small></span><div class="row" style="flex-wrap:wrap;gap:.4rem">${FORMS5.filter(f => f !== D.form).map(f => `<button class="btn btn-small" data-reform="${f}">${f}(으)로</button>`).join('')}</div></div>
+              <div class="f" style="margin-top:.5rem"><span>형식 바꿔 보기 <small>같은 내용을 다른 형식으로 써 보고 비교해요</small></span><div class="row" style="flex-wrap:wrap;gap:.4rem">${FORMS5.filter(f => f !== D.form).map(f => `<button class="btn btn-small" data-reform="${f}">${f === '소설' ? '짧은 소설로' : f + '(으)로'}</button>`).join('')}</div></div>
               ${D.review ? `<div class="mrev"><p><b>잘된 점</b> ${esc(D.review.good)}</p><ol>${D.review.fixes.map(x => `<li>${esc(x)}</li>`).join('')}</ol><small class="muted">3-4 글에서 직접 고쳐 보세요.</small></div>` : ''}
               ${D.marked ? `<div class="mmark"><p class="mread-k"><span class="lg">사실(내 기억)</span> <mark class="fic">상상(지어낸 부분)</mark> <button class="linkbtn" id="mMarkX">닫기</button></p><div class="mmark-t">${markHTML(D.marked)}</div></div>` : ''}
               ${D.alt ? `<div class="malt"><p class="mread-k">${esc(D.alt.form)}(으)로 바꿔 본 글 — 「${esc(D.alt.title)}」</p><div class="mmark-t">${esc(D.alt.text).replace(/\n/g, '<br>')}</div>
@@ -1186,8 +1233,10 @@ ${pts.map(([x, y, n]) => `<g transform="translate(${x} ${y})"><circle r="32" fil
               : '<p class="muted">글이 생기면 쓸 수 있어요.</p>'}</li>
           </ol></section>
         <section class="card ${D.text ? '' : 'dim'}"><h2 class="h2">④ 그림(선택) · 내 책에 넣기</h2>
-          <div class="ph-row"><div class="ph-pic">${D.img && D.img.url ? `<img src="${esc(D.img.thumb || D.img.url)}" alt="">` : '<span>그림 없음<br><small>시는 글만이어도 좋아요</small></span>'}</div>
-            <div class="ph-btns"><button class="btn btn-ai" data-mi="ai" ${D.text ? '' : 'disabled'}>AI로 그림 그리기</button><button class="btn" data-mi="up">사진·그림 올리기</button>${D.img ? '<button class="btn" data-mi="tune">사진 손보기</button><button class="btn btn-ghost" data-mi="x">그림 빼기</button>' : ''}</div></div>
+          <p class="muted">그림은 여러 장 넣을 수 있고, 글 <b>사이 원하는 자리</b>에 끼워 넣어요. 시는 글만이어도 좋아요.</p>
+          ${D.imgs.length ? `<div class="mimgs">${D.imgs.map((x, i) => `<div class="mimg"><img src="${esc(x.thumb || x.url)}" alt="그림 ${i + 1}"><div class="mimg-r"><label class="f">넣을 자리<select data-mpos="${i}">${posOpts(x.after)}</select></label>
+            <div class="row" style="flex-wrap:wrap;gap:.35rem"><button class="btn btn-small btn-ai" data-mi="re|${i}">그림 바꾸기</button><button class="btn btn-small btn-ai" data-mi="part|${i}">부분만 고치기</button><button class="btn btn-small" data-mi="tune|${i}">사진 손보기</button><button class="btn btn-small btn-ghost" data-mi="x|${i}">빼기</button></div></div></div>`).join('')}</div>` : ''}
+          <div class="ph-btns"><button class="btn btn-ai" data-mi="ai" ${D.text ? '' : 'disabled'}>AI로 새 그림 그리기</button><button class="btn" data-mi="up">사진·그림 올리기</button></div>
           <p class="muted" id="pBookInfo"></p>
           <button class="btn btn-main" id="mBook" ${D.text ? '' : 'disabled'}>내 책에 넣기</button></section>
         <p class="svstate" aria-live="polite"></p>`;
@@ -1195,12 +1244,15 @@ ${pts.map(([x, y, n]) => `<g transform="translate(${x} ${y})"><circle r="32" fil
     };
     let fitT = null;
     const ptpl = () => D.form === '시' ? 'poem' : 'text';
+    const posOpts = after => Array.from({ length: nTP + 1 }, (_, k) => `<option value="${k}" ${Math.min(after, nTP) === k ? 'selected' : ''}>${k === 0 ? '글 앞 (맨 처음)' : k === nTP ? `글 맨 뒤 (${k}쪽 다음)` : `글 ${k}쪽 다음`}</option>`).join('');
+    const ordered = tp => { const out = []; for (let k = 0; k <= tp.length; k++) { D.imgs.filter(x => Math.min(x.after, tp.length) === k).forEach(x => { const { after, ...im } = x; out.push({ tpl: 'fullSafe', sec: 'free', imgs: [im], hint: '자유 주제 — 그림 (5회차)' }); }); if (k < tp.length) out.push(tp[k]); } return out; };
     const checkFit = () => { clearTimeout(fitT); fitT = setTimeout(async () => {
       const el = $('#pFit', v), info = $('#pBookInfo', v); if (!window.Book || !D.text) { if (info) info.textContent = ''; return; }
       const tp = await textPages(D.title, D.text, 'free', '', ptpl()); if (!v.isConnected) return;
-      const n = tp.length + (D.img ? 1 : 0);
-      if (el) { el.className = 'fitline ' + (n <= 4 ? 'ok' : 'over'); el.textContent = `글 ${tp.length}쪽${D.img ? ' + 그림 1쪽' : ''} = ${n}쪽${n > 4 ? ' — 자유 주제는 2~4쪽이 좋아요. 줄여 보세요' : ''}`; }
-      if (info) info.textContent = `${D.img ? '그림 1쪽 + ' : ''}글 ${tp.length}쪽 = ${n}쪽으로 들어가요.`;
+      if (tp.length !== nTP) { nTP = tp.length; $$('[data-mpos]', v).forEach(sel => { sel.innerHTML = posOpts(D.imgs[+sel.dataset.mpos].after); }); }
+      const ni = D.imgs.length, n = tp.length + ni;
+      if (el) { el.className = 'fitline ' + (n <= 4 ? 'ok' : 'over'); el.textContent = `글 ${tp.length}쪽${ni ? ` + 그림 ${ni}쪽` : ''} = ${n}쪽${n > 4 ? ' — 자유 주제는 2~4쪽이 좋아요. 3-5에서 줄이거나 그림을 빼 보세요' : ''}`; }
+      if (info) info.textContent = `글 ${tp.length}쪽${ni ? ` + 그림 ${ni}쪽` : ''} = ${n}쪽으로 들어가요.`;
     }, 500); };
     draw();
     v.oninput = e => {
@@ -1208,7 +1260,7 @@ ${pts.map(([x, y, n]) => `<g transform="translate(${x} ${y})"><circle r="32" fil
       const qi = e.target.dataset.qa; if (qi != null) { D.qa[+qi].a = e.target.value; later(); }
       if (e.target.id === 'mAns') { D.ansDraft = e.target.value; later(); }
     };
-    v.onchange = e => { if (e.target.id === 'mRatio') { D.ratio = e.target.value; later(); } };
+    v.onchange = e => { if (e.target.id === 'mRatio') { D.ratio = e.target.value; later(); } const mp = e.target.dataset.mpos; if (mp != null) { D.imgs[+mp].after = +e.target.value; later(); checkFit(); } };
     const ai = async (btn, label, fn) => { if (!aiOk() && !(await askAi())) return; await busy(btn, label, async () => { await save(); await fn(); }); };
     v.onclick = async e => {
       const t = e.target;
@@ -1250,20 +1302,25 @@ ${pts.map(([x, y, n]) => `<g transform="translate(${x} ${y})"><circle r="32" fil
       const rf = t.closest('[data-reform]'); if (rf) return ai(rf, '바꿔 쓰는 중… (30초쯤)', async () => { const r = await askAI({ mode: 'reform', text: D.text, to: rf.dataset.reform }); D.alt = { form: rf.dataset.reform, title: r.title, text: r.text }; await save(); draw(); });
       if (t.closest('#mAltUse')) { D.prev = D.text; D.text = D.alt.text; D.title = D.alt.title || D.title; D.form = D.alt.form; D.alt = null; D.marked = ''; await save(); draw(); toast('형식을 바꿨어요. "바꾸기 전으로 되돌리기"로 돌아갈 수 있어요.'); return; }
       if (t.closest('#mAltX')) { D.alt = null; await save(); draw(); return; }
-      const sk = t.closest('[data-shrink]'); if (sk) return ai(sk, '줄이는 중…', async () => { const r = await askAI({ mode: 'shrink', text: D.text, target: sk.dataset.shrink }); D.prev = D.text; D.text = r.text; D.shrunk = { p1: '한 쪽', p2: '한 장(2쪽)', p4: '두 장(4쪽)' }[sk.dataset.shrink]; D.marked = ''; await save(); draw(); });
+      const sk = t.closest('[data-shrink]'); if (sk) return ai(sk, '줄이는 중…', async () => { const r = await askAI({ mode: 'shrink', text: D.text, target: sk.dataset.shrink }); D.prev = D.text; D.text = r.text; D.shrunk = { p1: '1쪽', p2: '2쪽', p3: '3쪽', p4: '4쪽' }[sk.dataset.shrink]; D.marked = ''; await save(); draw(); });
       if (t.closest('#pUndo')) { const x = D.text; D.text = D.prev; D.prev = x; D.marked = ''; await save(); draw(); return; }
       const mi = t.closest('[data-mi]');
       if (mi) {
         const k = mi.dataset.mi;
-        if (k === 'ai') { const im = await genImage({ frame: PICFR, text: D.text.slice(0, 600), whole: [D.title, D.text].join('\n\n'), scene: `타로 카드: ${D.picks.join(', ')}` }); if (im) { D.img = im; await save(); draw(); } return; }
-        if (k === 'up') { const f = await pickFile(); if (!f) return; await busy(mi, '올리는 중…', async () => { D.img = await uploadImage(f); await save(); draw(); }); return; }
-        if (k === 'tune') { const im = await photoTools({ url: D.img.url }); if (im) { D.img = im; await save(); draw(); } return; }
-        if (k === 'x') { D.img = null; await save(); draw(); return; }
+        const [k0, si] = k.split('|'), x = si != null ? D.imgs[+si] : null, at = D.imgs.length ? Math.ceil(nTP / 2) : 0;
+        const put = async im => { if (!im) return; if (x) Object.assign(D.imgs[+si], im, { after: x.after }); else D.imgs.push({ ...im, after: at }); syncImg(); await save(); draw(); };
+        if (k0 === 'ai') return put(await genImage({ frame: PICFR, text: D.text.slice(0, 600), whole: [D.title, D.text].join('\n\n'), scene: `타로 카드: ${D.picks.join(', ')}` }));
+        if (k0 === 'up') { const f = await pickFile(); if (!f) return; await busy(mi, '올리는 중…', async () => put(await uploadImage(f))); return; }
+        if (!x) return;
+        if (k0 === 're') return put(await genImage({ frame: PICFR, text: D.text.slice(0, 600), whole: [D.title, D.text].join('\n\n'), photo: x }));
+        if (k0 === 'part') return put(await partEdit(x));
+        if (k0 === 'tune') return put(await photoTools({ url: x.url }));
+        if (k0 === 'x') { D.imgs.splice(+si, 1); syncImg(); await save(); draw(); return; }
       }
       if (t.closest('#mBook')) {
         await busy(t.closest('#mBook'), '넣는 중…', async () => {
           await save();
-          const pages = (D.img ? [{ tpl: 'fullSafe', sec: 'free', imgs: [D.img], hint: '자유 주제 — 그림 (5회차)' }] : []).concat(await textPages(D.title, D.text, 'free', `자유 주제 — ${D.form || '글'} (5회차)`, ptpl()));
+          const pages = ordered(await textPages(D.title, D.text, 'free', `자유 주제 — ${D.form || '글'} (5회차)`, ptpl()));
           const n = await appendPage(pages); D.inBook = true; await save(); toast(`내 책에 ${pages.length}쪽을 넣었어요 (지금 모두 ${n}쪽). "내 책 구성표"로 짝수를 확인해 주세요.`);
         });
       }
