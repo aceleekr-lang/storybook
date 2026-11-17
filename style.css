@@ -805,3 +805,6 @@ td.t-title { max-width: 16em; overflow: hidden; text-overflow: ellipsis; }
   .pm-row { grid-template-columns: auto 56px 1fr; } .pm-mv { order: 1; grid-column: auto; display: flex; justify-content: flex-end; align-items: start; }
   .pm-body { order: 2; grid-column: 1 / -1; }
 }
+
+/* 5회차 마음 읽기 인터뷰 */
+.mchat { max-height: 62vh; } .mchat .b-ai { background: #F3EEFA; } .mpos { display: inline-block; font-family: var(--ui); font-size: .8rem; font-weight: 700; color: #fff; background: #6B4FA3; border-radius: 99px; padding: .05rem .55rem; margin-bottom: .25rem; } .mq-q { font-weight: 700; margin-top: .3rem !important; } .mskip { color: var(--sub); } .msend { display: flex; flex-direction: column; gap: .3rem; align-items: center; }

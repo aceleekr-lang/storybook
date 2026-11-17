@@ -92,10 +92,25 @@ ${SAFE}
 - 실제 기억을 묻는 질문과 상상을 여는 질문을 섞습니다(사실과 허구가 섞인 글을 쓰기 위해).
 - 쉬운 질문에서 깊은 질문 순서로, 한 질문은 한 문장, 공손하게("당신"이라고 부르지 말고 주어 없이).
 - 이미 대답한 것은 다시 묻지 않습니다.`;
-const MREAD = `당신은 타로 카드 풀이의 방식(자리마다 카드의 뜻을 읽고, 세 장을 하나의 흐름으로 잇기)을 빌려, 참여자의 대답과 함께 마음을 따뜻하게 되비추고 글의 주제를 찾는 글쓰기 안내자입니다.
+const MTURN = `당신은 마을 이야기책 수업에서 타로 카드로 이야기를 꺼내 주는 다정한 타로 상담가입니다. 한 번에 질문 하나씩, 대화하듯 인터뷰를 이어 갑니다. 점·운세·예언은 하지 않고, 카드는 기억과 마음을 여는 실마리로만 씁니다.
+${SAFE}
+- 순서: 과거 카드 → 현재 카드 → 미래 카드. 과거는 실제 지나온 기억, 현재는 지금의 마음과 일상, 미래는 바람과 상상을 묻습니다.
+- 질문은 모두 5~9개. 한 카드에 최소 1개, 대답이 풍성하면 다음 카드로, 짧거나 건너뛰면 더 쉬운 질문으로 한 번 더 묻거나 다음 카드로 넘어갑니다.
+- say(1~2문장):
+  · 새 카드로 넘어갈 때(그 자리의 첫 질문)는 카드를 먼저 짧게 풀어 줍니다. 예) "과거 자리에 '태양'이 나왔네요. 아이가 해바라기 밭에서 활짝 웃는 그림인데, 마음껏 환했던 시절을 뜻하는 카드예요."
+  · 맨 처음에는 짧은 인사 뒤에 과거 카드를 풉니다.
+  · 그 밖에는 바로 앞 대답을 그분이 쓴 낱말 그대로 받아 짧게 공감합니다. 예) "할머니 댁 마루에서 먹던 수박이라니, 그 여름 소리가 들리는 것 같아요."
+  · 분석·해석·평가("~한 성향이시네요", "~를 의미합니다")와 판에 박힌 칭찬("멋지네요", "좋은 대답이에요")은 쓰지 않습니다.
+- q(한 문장): 바로 앞 대답에서 이어지는 구체적인 질문. 언제·누구와·어디서·무슨 소리나 냄새·그때 마음처럼 장면이 떠오르게 묻습니다. 새 카드의 첫 질문은 그 카드의 뜻이나 그림과 그분의 삶을 잇습니다. 주어("당신") 없이 공손하게.
+- pos: 이번 질문의 자리(과거/현재/미래).
+- done: 세 자리를 모두 물었고 글감이 충분하면 yes(최소 5개). 그러면 say에 짧은 감사와 "이제 세 장을 이어서 마음을 읽어 볼게요" 같은 마무리를 쓰고 q는 비웁니다. 아니면 no.`;
+const MREAD = `당신은 다정한 타로 상담가이자 글쓰기 안내자입니다. 과거·현재·미래 자리의 타로 카드 세 장과 인터뷰 대답을 엮어, 그분의 이야기를 그분에게 들려주듯 되돌려 줍니다.
 - 점·운세·예언이 아닙니다. "~할 것이다" 같은 미래 단정은 하지 않고, 카드는 이야기의 실마리로만 씁니다.
 ${SAFE}
-- reading: 과거·현재·미래 카드를 차례로 짚고(각 카드의 전통적인 뜻 + 참여자의 대답), 세 장이 이어지는 흐름을 3~4문장으로 되비춥니다. "과거의 '태양'은 ~처럼 보여요", "~를 소중히 여기시는 것 같아요"처럼 부드럽게. 판단·평가·조언은 하지 않습니다.
+- reading(4~6문장): 분석이나 해석 보고서처럼 쓰지 않습니다. "성향", "의미합니다", "보여 줍니다", "~하는 분이시군요" 같은 말을 쓰지 않습니다.
+  · 그분이 실제로 한 말(낱말·장면)을 따옴표로 두세 군데 그대로 살려, 과거 → 현재 → 미래가 하나의 이야기로 이어지게 들려줍니다. 카드 이름은 자연스럽게 한 번씩만 짚습니다.
+  · 예) "'태양' 카드 앞에서 떠올리신 건 '할머니 댁 마루의 수박'이었어요. 그 여름의 환한 마음이 지금 '퇴근길 철길'을 걸을 때도 문득 돌아오고, '별' 카드 앞에서는 손녀에게 그 길을 걸어 보게 하고 싶다고 하셨지요."
+  · 마지막 문장은 "이 이야기를 글로 써 보면 어떨까요?"처럼 아래 주제로 자연스럽게 잇습니다.
 - 주제 세 개(t1, t2, t3)를 추천합니다. 각 주제는 "제목 | 형식 | 사실 비율 | 이유" 한 줄로 씁니다.
   · 제목: 15자 안팎의 글 제목 후보
   · 형식: 시, 산문, 수필, 동화 중 하나 (세 주제의 형식은 되도록 서로 다르게)
@@ -139,7 +154,7 @@ module.exports = async function handler(req, res) {
     res.status(500).json({ error: 'AI 서버 설정(환경변수)이 비어 있어요. 운영자에게 알려 주세요.' }); return;
   }
   const body = readBody(req);
-  const mode = ['ask', 'sum', 'plan', 'essay', 'fit', 'story', 'intro', 'pq', 'pstory', 'pmore', 'shrink', 'mq', 'mread', 'fdraft', 'fstory', 'fmore', 'marks', 'review', 'reform'].includes(body.mode) ? body.mode : 'ask';
+  const mode = ['ask', 'sum', 'plan', 'essay', 'fit', 'story', 'intro', 'pq', 'pstory', 'pmore', 'shrink', 'mq', 'mturn', 'mread', 'fdraft', 'fstory', 'fmore', 'marks', 'review', 'reform'].includes(body.mode) ? body.mode : 'ask';
   // msgs: [{r:'ai'|'me', t:'...'}] — 최근 40개만
   const msgs = (Array.isArray(body.msgs) ? body.msgs : []).filter(m => m && m.t).slice(-40).map(m => ({ r: m.r === 'ai' ? 'ai' : 'me', t: clip(m.t, 2000) }));
   const seed = clip(body.seed, 300);
@@ -199,10 +214,10 @@ module.exports = async function handler(req, res) {
           out = { title: clip(j.title, 60), text: clip(j.text, 12000), more: !!j.cut };
         }
       }
-    } else if (['mq', 'mread', 'fdraft', 'fstory', 'fmore'].includes(mode)) {
+    } else if (['mq', 'mturn', 'mread', 'fdraft', 'fstory', 'fmore'].includes(mode)) {
       const cards = (Array.isArray(body.cards) ? body.cards : []).slice(0, 3).filter(x => x && x.name);
       const picks = cards.length ? cards.map(x => `${clip(x.pos, 6)} — ${clip(x.name, 20)}(${clip(x.en, 30)}): ${clip(x.keys, 80)} / 이야기 실마리: ${clip(x.story, 80)}`) : (Array.isArray(body.picks) ? body.picks : []).slice(0, 3).map(x => clip(x, 20)).filter(Boolean);
-      const qa = (Array.isArray(body.qa) ? body.qa : []).filter(x => x && (x.q || x.a)).slice(0, 24).map(x => `질문: ${clip(x.q, 300)}\n대답: ${clip(x.a, 1500) || '(건너뜀)'}`).join('\n\n');
+      const qa = (Array.isArray(body.qa) ? body.qa : []).filter(x => x && (x.q || x.a)).slice(0, 24).map(x => `${x.pos ? `[${clip(x.pos, 6)}] ` : ''}질문: ${clip(x.q, 300)}\n대답: ${clip(x.a, 1500) || '(건너뜀)'}`).join('\n\n');
       const mine = clip(body.draft, 6000).trim(), form = ['시', '산문', '수필', '동화'].includes(body.form) ? body.form : '수필';
       const ratio = clip(body.ratio, 30), len = ['p1', 'p2', 'full'].includes(body.len) ? body.len : 'full';
       if (!picks.length) { res.status(400).json({ error: '타로 카드를 먼저 뽑아 주세요.' }); return; }
@@ -210,6 +225,17 @@ module.exports = async function handler(req, res) {
       if (mode === 'mq') {
         const j = await claudeJSON({ system: MQ, messages: [{ role: 'user', content: info }], max_tokens: 2000, schema: { q1: 1, q2: 1, q3: 1, q4: 1, q5: 1, q6: 1, q7: 1, q8: 1 } });
         out = { qs: [j.q1, j.q2, j.q3, j.q4, j.q5, j.q6, j.q7, j.q8].map(x => clip(x, 200).trim()).filter(Boolean) };
+      } else if (mode === 'mturn') { // 한 번에 한 질문씩 — 앞 대답을 받아 이어 가는 인터뷰
+        const all = (Array.isArray(body.qa) ? body.qa : []).filter(x => x && x.q), n = all.length;
+        const cnt = ['과거', '현재', '미래'].map(p => `${p} ${all.filter(x => x.pos === p).length}개`).join(', ');
+        const last = all[n - 1];
+        if (n >= 9) { out = { say: '이야기 들려주셔서 고마워요. 이제 세 장을 이어서 마음을 읽어 볼게요.', q: '', pos: '', done: true }; }
+        else {
+          const ask = `${info}\n\n지금까지 질문 ${n}개 (${cnt}).${last ? `\n바로 앞 질문: ${clip(last.q, 300)}\n바로 앞 대답: ${clip(last.a, 1500) || '(건너뜀)'}` : '\n아직 질문이 없습니다. 인사와 함께 과거 카드부터 시작하세요.'}${n < 5 ? '\n아직 5개가 안 되었으니 done은 no입니다.' : ''}${n >= 8 ? '\n이번이 마지막 질문이 되게 하세요.' : ''}`;
+          const j = await claudeJSON({ system: MTURN, messages: [{ role: 'user', content: ask }], max_tokens: 800, schema: { say: 1, q: 1, pos: 1, done: 1 } });
+          const done = n >= 5 && /^\s*(yes|y|true|예|네)/i.test(String(j.done || '')), q = clip(j.q, 200).trim();
+          out = { say: clip(j.say, 300).trim(), q: done ? '' : q, pos: ['과거', '현재', '미래'].includes(String(j.pos || '').trim()) ? String(j.pos).trim() : (last && last.pos) || '과거', done: done || !q };
+        }
       } else if (mode === 'mread') {
         const j = await claudeJSON({ system: MREAD, messages: [{ role: 'user', content: info }], max_tokens: 2000, schema: { reading: 1, t1: 1, t2: 1, t3: 1 } });
         const th = [j.t1, j.t2, j.t3].map(x => String(x || '').split('|').map(y => y.trim())).filter(x => x[0]).map(([title, form, ratio, why]) => ({ title: clip(title, 40), form: ['시', '산문', '수필', '동화'].includes(form) ? form : '수필', ratio: clip(ratio, 30), why: clip(why, 200) }));

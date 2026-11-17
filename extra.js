@@ -1128,6 +1128,7 @@ ${pts.map(([x, y, n]) => `<g transform="translate(${x} ${y})"><circle r="32" fil
     const draw = () => {
       if (D.tarot.length < 3 && !deck.length) newDeck();
       const q = D.qa.length, done1 = D.tarot.length >= 3, themeOk = !!(D.theme && D.form);
+      const ansd = x => !!String(x.a || '').trim(), nA = D.qa.filter(ansd).length, cur = D.qa.findIndex(x => !ansd(x) && !x.skip);
       v.innerHTML = `<h1 class="h">마음 읽기 · 자유 주제</h1>
         <p class="lead">타로 카드 세 장을 <b>과거 · 현재 · 미래</b> 자리에 뽑으면, AI가 카드의 뜻과 내 대답을 엮어 마음을 읽고 글의 주제를 함께 찾아요. 점을 치는 게 아니라 <b>이야기의 실마리</b>를 찾는 거예요.</p>
         <p class="svstate" aria-live="polite"></p>
@@ -1139,9 +1140,10 @@ ${pts.map(([x, y, n]) => `<g transform="translate(${x} ${y})"><circle r="32" fil
           : `<p class="muted"><b>${POS[D.tarot.length]}</b> 자리에 놓을 카드 — 손이 가는 카드를 눌러요.</p>
             <div class="tr-deck">${deck.map((n, i) => `<button class="tr-c" data-tc="${i}" aria-label="뒤집힌 카드 ${i + 1}"><img class="b" src="/tarot/back.svg" alt=""><img class="f" src="${tarotImg(n)}" alt=""></button>`).join('')}</div>`}</section>
         <section class="card ${done1 ? '' : 'dim'}"><h2 class="h2">② 마음 읽기 <small>대답하기 싫은 질문은 건너뛰어도 돼요</small></h2>
-          ${q ? `<ol class="qa">${D.qa.map((x, i) => `<li><p class="qa-q">${esc(x.q)}</p><textarea rows="2" data-qa="${i}" placeholder="떠오르는 대로 (건너뛰어도 돼요)">${esc(x.a || '')}</textarea></li>`).join('')}</ol>` : '<p class="muted">카드 세 장을 뽑으면 AI가 카드의 뜻과 자리로 질문 8개를 해요.</p>'}
-          <div class="row" style="flex-wrap:wrap;gap:.5rem"><button class="btn btn-ai" id="mQ" ${done1 ? '' : 'disabled'}>${q ? '질문 더 받기' : 'AI에게 질문 받기'}</button>
-            <button class="btn btn-main" id="mRead" ${q ? '' : 'disabled'}>${D.reading ? '마음 다시 읽기' : '마음 읽기 받기'}</button></div>
+          ${done1 ? `<div class="chat mchat">${D.qa.length ? '' : '<p class="muted" style="margin:0">아래 <b>인터뷰 시작</b>을 누르면 AI 상담가가 과거 카드부터 한 장씩 풀어 주며 질문을 하나씩 건네요.</p>'}${D.qa.map(x => `<div class="bub b-ai">${x.pos ? `<span class="mpos">${esc(x.pos)}</span>` : ''}${x.say ? `<p>${esc(x.say)}</p>` : ''}<p class="mq-q">${esc(x.q)}</p></div>${ansd(x) ? `<div class="bub b-me"><p>${esc(x.a).replace(/\n/g, '<br>')}</p></div>` : x.skip ? '<div class="bub b-me mskip"><p>(건너뛰었어요)</p></div>' : ''}`).join('')}${D.ivEnd ? `<div class="bub b-ai"><p>${esc(D.ivEnd)}</p></div>` : ''}</div>
+            ${cur >= 0 ? `<div class="send"><textarea id="mAns" rows="3" placeholder="떠오르는 대로 편하게 적어 주세요">${esc(D.ansDraft || '')}</textarea><div class="msend"><button class="btn btn-main" id="mSend">대답하기</button><button class="linkbtn" id="mSkip">건너뛰기</button></div></div>` : ''}` : '<p class="muted">카드 세 장을 뽑으면 AI 상담가가 한 장씩 풀어 주며 질문을 하나씩 건네요.</p>'}
+          <div class="row" style="flex-wrap:wrap;gap:.5rem">${!D.qa.length ? `<button class="btn btn-ai" id="mQ" ${done1 ? '' : 'disabled'}>인터뷰 시작</button>` : cur < 0 && !D.ivEnd ? '<button class="btn btn-ai" id="mQ">다음 질문 받기</button>' : ''}
+            ${D.qa.length ? `<button class="btn ${D.ivEnd || D.reading ? 'btn-main' : ''}" id="mRead" ${nA >= 3 || D.ivEnd ? '' : 'disabled'}>${D.reading ? '마음 다시 읽기' : D.ivEnd ? '마음 읽기 받기' : '여기까지로 마음 읽기'}</button>` : ''}</div>
           ${D.reading ? `<div class="mread"><p class="mread-k">AI가 읽은 마음 <small>· 나만 보여요 (수업 화면에는 안 나와요)</small></p><p>${esc(D.reading).replace(/\n/g, '<br>')}</p></div>` : ''}
           ${D.themes.length ? `<p class="f-l" style="margin-top:.8rem">추천 주제 — 하나를 누르거나 아래에 직접 적어요</p>
             <div class="themes">${D.themes.map((t, i) => `<button class="theme ${D.theme === t.title ? 'on' : ''}" data-th="${i}"><b>${esc(t.title)}</b><span>${esc(t.form)} · ${esc(t.ratio)}</span><small>${esc(t.why)}</small></button>`).join('')}</div>` : ''}
@@ -1202,6 +1204,7 @@ ${pts.map(([x, y, n]) => `<g transform="translate(${x} ${y})"><circle r="32" fil
     v.oninput = e => {
       const k = e.target.dataset.k; if (k) { const was = mineOk(); D[k] = e.target.value; later(); if (k === 'text' || k === 'title') checkFit(); if (k === 'mine') { const b = $('#mDev', v); if (b) b.disabled = !(editedOk() && D.theme && D.form); const h = $('#mEditHint', v); if (h) h.hidden = editedOk(); } if (k === 'theme') $$('[data-th]', v).forEach(b => b.classList.toggle('on', D.themes[+b.dataset.th].title === D.theme)); return; }
       const qi = e.target.dataset.qa; if (qi != null) { D.qa[+qi].a = e.target.value; later(); }
+      if (e.target.id === 'mAns') { D.ansDraft = e.target.value; later(); }
     };
     v.onchange = e => { if (e.target.id === 'mRatio') { D.ratio = e.target.value; later(); } };
     const ai = async (btn, label, fn) => { if (!aiOk() && !(await askAi())) return; await busy(btn, label, async () => { await save(); await fn(); }); };
@@ -1215,7 +1218,11 @@ ${pts.map(([x, y, n]) => `<g transform="translate(${x} ${y})"><circle r="32" fil
         return;
       }
       if (t.closest('#mReset')) { if (!(await ask('카드를 다시 섞어 처음부터 뽑을까요?', '질문과 대답은 그대로 남아요.', '다시 섞기'))) return; D.tarot = []; D.picks = []; deck = []; shuffled = false; await save(); draw(); return; }
-      if (t.closest('#mQ')) return ai(t.closest('#mQ'), '카드를 읽는 중… (15초쯤)', async () => { const r = await askAI({ mode: 'mq', ...base() }); D.qa.push(...(r.qs || []).map(q => ({ q, a: '' }))); await save(); draw(); });
+      const turn = btn => ai(btn, D.qa.length ? '듣고 있어요…' : '카드를 펼치는 중…', async () => { const r = await askAI({ mode: 'mturn', ...base() }); if (r.done) { D.ivEnd = r.say || '이야기 들려주셔서 고마워요. 이제 세 장을 이어서 마음을 읽어 볼게요.'; } else D.qa.push({ pos: r.pos, say: r.say, q: r.q, a: '' }); await save(); draw(); const c = $('.mchat', v); if (c) c.scrollTop = c.scrollHeight; const a0 = $('#mAns', v); if (a0) a0.focus({ preventScroll: true }); });
+      if (t.closest('#mQ')) return turn(t.closest('#mQ'));
+      if (t.closest('#mSend') || t.closest('#mSkip')) { const i = D.qa.findIndex(x => !String(x.a || '').trim() && !x.skip); if (i < 0) return; const txt = ($('#mAns', v).value || '').trim();
+        if (t.closest('#mSend')) { if (!txt) { toast('대답을 적어 주세요. 떠오르지 않으면 건너뛰기를 눌러요.'); return; } D.qa[i].a = txt; } else D.qa[i].skip = true;
+        D.ansDraft = ''; draw(); const c = $('.mchat', v); if (c) c.scrollTop = c.scrollHeight; return turn($('#mQ', v) || t); }
       if (t.closest('#mRead')) return ai(t.closest('#mRead'), '마음을 읽는 중… (20초쯤)', async () => { const r = await askAI({ mode: 'mread', ...base() }); D.reading = r.reading; D.themes = r.themes || []; await save(); draw(); });
       const th = t.closest('[data-th]'); if (th) { const x = D.themes[+th.dataset.th]; D.theme = x.title; D.form = x.form; if (RATIOS.includes(x.ratio)) D.ratio = x.ratio; else { const m = String(x.ratio).match(/(\d+)/); if (m) D.ratio = RATIOS.reduce((a, r) => Math.abs(+r.match(/\d+/)[0] - +m[1]) < Math.abs(+a.match(/\d+/)[0] - +m[1]) ? r : a, RATIOS[1]); } await save(); draw(); return; }
       const fm = t.closest('[data-form]'); if (fm) { D.form = fm.dataset.form; await save(); draw(); return; }
