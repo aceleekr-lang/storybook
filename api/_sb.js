@@ -56,15 +56,22 @@ async function claudeJSON({ system, messages, max_tokens = 3000, schema }) {
   const keys = Object.keys(schema);
   const fmt = keys.map(k => schema[k] === 'scenes' ? '<scene><text>장면 글</text><pic>그림 묘사</pic></scene>  (장면 수만큼 반복)' : `<${k}>…</${k}>`).join('\n');
   const sys = system + `\n\n출력 형식(가장 중요): 위에 적힌 JSON 형식은 쓰지 말고 아래 태그 형식으로만 출력합니다. 태그 밖에는 아무것도 쓰지 않습니다. 글 안의 따옴표·줄바꿈은 그대로 씁니다.\n${fmt}`;
-  const j = await call({ max_tokens, system: sys, messages });
-  const raw = (j.content || []).filter(c => c.type === 'text').map(c => c.text).join('');
+  let j = await call({ max_tokens, system: sys, messages });
+  let raw = (j.content || []).filter(c => c.type === 'text').map(c => c.text).join('');
+  // 길이 제한에 걸려 태그가 하나도 없으면(머리말이 길었거나 생각이 길었을 때) 한도를 늘려 한 번 더
+  if (j.stop_reason === 'max_tokens' && !keys.some(k => raw.includes(`<${k === 'scenes' ? 'scene' : k}>`))) {
+    j = await call({ max_tokens: Math.min(8000, Math.max(3000, max_tokens * 2)), system: sys + '\n\n머리말·설명 없이 첫 글자부터 바로 태그로 시작합니다.', messages });
+    raw = (j.content || []).filter(c => c.type === 'text').map(c => c.text).join('');
+  }
   const out = {}; let found = 0;
   keys.forEach(k => {
     if (schema[k] === 'scenes') { out[k] = [...raw.matchAll(/<scene>([\s\S]*?)(?:<\/scene>|$)/g)].map(m => ({ text: untag(m[1], 'text') || '', pic: untag(m[1], 'pic') || '' })).filter(x => x.text); if (out[k].length) found++; }
     else { const v = untag(raw, k); out[k] = v || ''; if (v) found++; }
   });
   if (found) { Object.defineProperty(out, 'cut', { value: j.stop_reason === 'max_tokens' }); return out; }
-  try { return parseJSON(raw); } catch { const e = new Error(`형식 없음 (${j.stop_reason || ''}) ${raw.slice(0, 40)}`); e.status = 'fmt'; throw e; }
+  try { return parseJSON(raw); } catch { /* 태그 없이 글만 왔으면 글 한 칸짜리는 그대로 살림 */ }
+  if (keys.includes('text') && raw.trim().length > 30) { const o = { text: raw.trim() }; keys.forEach(k => { if (!(k in o)) o[k] = ''; }); Object.defineProperty(o, 'cut', { value: j.stop_reason === 'max_tokens' }); return o; }
+  const e = new Error('AI 답이 너무 길어 중간에 끊겼어요. 한 번 더 눌러 주세요.'); e.status = 'fmt'; throw e;
 }
 
 async function claude({ system, messages, max_tokens = 1500 }) {

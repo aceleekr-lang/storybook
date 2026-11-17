@@ -222,7 +222,7 @@ module.exports = async function handler(req, res) {
       if (!img.length && info.replace(/\s/g, '').length < 6) { res.status(400).json({ error: '사진을 올리거나 메모를 조금 적어 주세요.' }); return; }
       const content = [...img, { type: 'text', text: (img.length ? '' : '(사진 없이) ') + (info || '사진을 보고 시작해 주세요.') }];
       if (mode === 'pq') {
-        const j = await claudeJSON({ system: PQ, messages: [{ role: 'user', content }], max_tokens: 2000, schema: { q1: 1, q2: 1, q3: 1, q4: 1, q5: 1, q6: 1, q7: 1, q8: 1 } });
+        const j = await claudeJSON({ system: PQ, messages: [{ role: 'user', content }], max_tokens: 3000, schema: { q1: 1, q2: 1, q3: 1, q4: 1, q5: 1, q6: 1, q7: 1, q8: 1 } });
         out = { qs: [j.q1, j.q2, j.q3, j.q4, j.q5, j.q6, j.q7, j.q8].map(x => clip(x, 200).trim()).filter(Boolean) };
       } else {
         const len = ['p1', 'p2', 'full'].includes(body.len) ? body.len : 'full';
@@ -245,7 +245,7 @@ module.exports = async function handler(req, res) {
       if (!picks.length) { res.status(400).json({ error: '타로 카드를 먼저 뽑아 주세요.' }); return; }
       const info = [cards.length ? `뽑은 타로 카드 (과거·현재·미래 자리):\n${picks.join('\n')}` : `고른 상징 카드: ${picks.join(', ')}`, qa && `<문답>\n${qa}\n</문답>`, body.theme && `정한 주제: ${clip(body.theme, 100)}`, (mode === 'fstory' || mode === 'fmore') && mine && `<내 초안>\n${mine}\n</내 초안>`].filter(Boolean).join('\n\n');
       if (mode === 'mq') {
-        const j = await claudeJSON({ system: MQ, messages: [{ role: 'user', content: info }], max_tokens: 2000, schema: { q1: 1, q2: 1, q3: 1, q4: 1, q5: 1, q6: 1, q7: 1, q8: 1 } });
+        const j = await claudeJSON({ system: MQ, messages: [{ role: 'user', content: info }], max_tokens: 3000, schema: { q1: 1, q2: 1, q3: 1, q4: 1, q5: 1, q6: 1, q7: 1, q8: 1 } });
         out = { qs: [j.q1, j.q2, j.q3, j.q4, j.q5, j.q6, j.q7, j.q8].map(x => clip(x, 200).trim()).filter(Boolean) };
       } else if (mode === 'mturn') { // 한 번에 한 질문씩 — 앞 대답을 받아 이어 가는 인터뷰
         const all = (Array.isArray(body.qa) ? body.qa : []).filter(x => x && x.q), n = all.length;
@@ -254,12 +254,12 @@ module.exports = async function handler(req, res) {
         if (n >= 9) { out = { say: '이야기 들려주셔서 고마워요. 이제 세 장을 이어서 마음을 읽어 볼게요.', q: '', pos: '', done: true }; }
         else {
           const ask = `${info}\n\n지금까지 질문 ${n}개 (${cnt}).${last ? `\n바로 앞 질문: ${clip(last.q, 300)}\n바로 앞 대답: ${clip(last.a, 1500) || '(건너뜀)'}` : '\n아직 질문이 없습니다. 인사와 함께 과거 카드부터 시작하세요.'}${n < 5 ? '\n아직 5개가 안 되었으니 done은 no입니다.' : ''}${n >= 8 ? '\n이번이 마지막 질문이 되게 하세요.' : ''}`;
-          const j = await claudeJSON({ system: MTURN, messages: [{ role: 'user', content: ask }], max_tokens: 800, schema: { say: 1, q: 1, pos: 1, done: 1 } });
+          const j = await claudeJSON({ system: MTURN, messages: [{ role: 'user', content: ask }], max_tokens: 3000, schema: { say: 1, q: 1, pos: 1, done: 1 } });
           const done = n >= 5 && /^\s*(yes|y|true|예|네)/i.test(String(j.done || '')), q = clip(j.q, 200).trim();
           out = { say: clip(j.say, 300).trim(), q: done ? '' : q, pos: ['과거', '현재', '미래'].includes(String(j.pos || '').trim()) ? String(j.pos).trim() : (last && last.pos) || '과거', done: done || !q };
         }
       } else if (mode === 'mread') {
-        const j = await claudeJSON({ system: MREAD, messages: [{ role: 'user', content: info }], max_tokens: 2000, schema: { reading: 1, t1: 1, t2: 1, t3: 1 } });
+        const j = await claudeJSON({ system: MREAD, messages: [{ role: 'user', content: info }], max_tokens: 4000, schema: { reading: 1, t1: 1, t2: 1, t3: 1 } });
         const th = [j.t1, j.t2, j.t3].map(x => String(x || '').split('|').map(y => y.trim())).filter(x => x[0]).map(([title, form, ratio, why]) => ({ title: clip(title, 40), form: ['시', '소설', '수필', '동화'].includes(F5(form)) ? F5(form) : '수필', ratio: clip(ratio, 30), why: clip(why, 200) }));
         out = { reading: clip(j.reading, 600).trim(), themes: th };
       } else if (mode === 'fdraft') { // 3-1 AI 초안: 참여자가 고치기 좋은 짧은 뼈대
@@ -287,7 +287,7 @@ module.exports = async function handler(req, res) {
         const j = await claudeJSON({ system: MARKS, messages: [{ role: 'user', content: `<문답>\n${qa || '(없음)'}\n</문답>\n\n<글>\n${text}\n</글>` }], max_tokens: 6000, schema: { text: 1 } });
         out = { marked: clip(j.text, 12000) };
       } else if (mode === 'review') {
-        const j = await claudeJSON({ system: REVIEW(form), messages: [{ role: 'user', content: `<글>\n${text}\n</글>` }], max_tokens: 1500, schema: { good: 1, fix1: 1, fix2: 1, fix3: 1 } });
+        const j = await claudeJSON({ system: REVIEW(form), messages: [{ role: 'user', content: `<글>\n${text}\n</글>` }], max_tokens: 3000, schema: { good: 1, fix1: 1, fix2: 1, fix3: 1 } });
         out = { good: clip(j.good, 400).trim(), fixes: [j.fix1, j.fix2, j.fix3].map(x => clip(x, 300).trim()).filter(Boolean) };
       } else {
         const to = ['시', '소설', '수필', '동화'].includes(F5(body.to)) ? F5(body.to) : '시';
@@ -302,7 +302,7 @@ module.exports = async function handler(req, res) {
     } else if (mode === 'intro') {
       const memo = clip(body.memo, 1200);
       if (memo.replace(/\s/g, '').length < 4) { res.status(400).json({ error: '자기소개 메모가 없어요. "오늘 수업" 1회차 자기소개를 먼저 적어 주세요.' }); return; }
-      const j = await claudeJSON({ system: INTRO, messages: [{ role: 'user', content: memo }], max_tokens: 2000, schema: { text: 1 } });
+      const j = await claudeJSON({ system: INTRO, messages: [{ role: 'user', content: memo }], max_tokens: 3000, schema: { text: 1 } });
       out = { text: clip(j.text, 800) };
     } else if (mode === 'essay') {
       if (msgs.filter(m => m.r === 'me').length < 2) { res.status(400).json({ error: '수필을 쓰려면 인터뷰에서 조금 더 이야기해 주세요.' }); return; }
