@@ -308,7 +308,7 @@
   function tabsFor() {
     const t = [['today', '오늘 수업']];
     if (!isStaff() || (S.me.tracks || []).length) t.push(['write', '내 책 쓰기']);
-    t.push(['map', '이야기 지도'], ['interview', 'AI 인터뷰'], ['story', '상상 이야기'], ['photo', '사진 이야기'], ['style', '그림체']);
+    t.push(['map', '이야기 지도'], ['interview', 'AI 인터뷰'], ['story', '상상 이야기'], ['photo', '사진 이야기'], ['mind', '마음 읽기'], ['style', '그림체']);
     if (!isStaff() || (S.me.tracks || []).length) t.push(['album', '사진첩']);
     if (isStaff() || (S.me.tracks || []).length) t.push(['docs', '교육자료']);
     if (isStaff()) t.push(['board', '현황판'], ['photos', '회차 사진'], ['book', '책 만들기']);
@@ -815,7 +815,11 @@
     const drawAll = () => { $('.w-main', v).classList.toggle('no-pages', !W.pages.length); drawThumbs(); drawStage(); drawEdit(); syncFoot(); };
     drawAll(); drawFoot();
     await document.fonts.ready; stageZoom(); checkOver();
-    const onResize = () => stageZoom();
+    let lastW = document.documentElement.clientWidth;
+    const onResize = () => { // 손가락 확대·주소창 접힘 같은 가짜 크기 변화는 무시하고, 화면 너비가 실제로 바뀔 때만 다시 맞춤
+      if (window.visualViewport && window.visualViewport.scale > 1.01) return;
+      const w = document.documentElement.clientWidth; if (w === lastW) return; lastW = w; stageZoom();
+    };
     window.addEventListener('resize', onResize);
     S.cleanup = () => { window.removeEventListener('resize', onResize); clearTimeout(saveT); };
 
@@ -1302,7 +1306,7 @@
       let scrollT; track.onscroll = () => { clearTimeout(scrollT); scrollT = setTimeout(() => { const k = Math.round(track.scrollLeft / track.clientWidth); if (k !== i) show(k, false); }, 80); };
       const close = () => { if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); document.removeEventListener('keydown', onKey); window.removeEventListener('resize', onRz); root.remove(); document.body.classList.remove('sl-open'); };
       const onKey = e => { if (e.key === 'ArrowLeft') show(i - 1); else if (e.key === 'ArrowRight') show(i + 1); else if (e.key === 'Escape') close(); };
-      const onRz = () => show(i, false);
+      const onRz = () => { if (window.visualViewport && window.visualViewport.scale > 1.01) return; show(i, false); };
       document.addEventListener('keydown', onKey); window.addEventListener('resize', onRz);
       root.onclick = e => {
         const b = e.target.closest('[data-sl]');

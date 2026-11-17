@@ -266,10 +266,11 @@
       ? `<details ${warn.some(x => x[0] === 'bad') ? 'open' : ''}><summary>확인할 것 ${warn.length}가지</summary><ul>${warn.map(([lv, t]) => `<li class="${lv}">${esc(t)}</li>`).join('')}</ul></details>`
       : '<p class="ok">문제없이 조판됐어요. 인쇄 전에 오탈자만 한 번 더 확인하세요.</p>';
     const fit = () => {
-      const pw = PW * 96 / 25.4;
-      const cols = one || window.innerWidth < 720 ? 1 : 2;
+      if (window.visualViewport && window.visualViewport.scale > 1.01) return; // 손가락으로 확대 중에는 다시 맞추지 않음
+      const pw = PW * 96 / 25.4, vw = document.documentElement.clientWidth;
+      const cols = one || vw < 720 ? 1 : 2;
       pagesEl.classList.toggle('one', cols === 1);
-      pagesEl.style.zoom = Math.min(1, (window.innerWidth - 32) / (pw * cols + 24));
+      pagesEl.style.zoom = Math.min(1, (vw - 32) / (pw * cols + 24));
     };
     fit();
     window.addEventListener('resize', fit);

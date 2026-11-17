@@ -22,11 +22,13 @@
 
   // ---- 무대 크기 맞추기 ----
   const stage = $('#stage');
-  const fit = () => { const k = Math.min(innerWidth / 1600, innerHeight / 900); stage.style.transform = `translate(-50%, -50%) scale(${k})`; };
+  const pinched = () => !!(window.visualViewport && window.visualViewport.scale > 1.01); // 손가락으로 확대 중이면 화면 맞추기를 멈춤 (아이패드 튐 방지)
+  const fit = () => { if (pinched()) return; const de = document.documentElement, k = Math.min(de.clientWidth / 1600, de.clientHeight / 900); stage.style.transform = `translate(-50%, -50%) scale(${k})`; };
   addEventListener('resize', fit); fit();
 
   // ---- 화면 넘기기 ----
   function show(i) {
+    if (window.__ttsStop) window.__ttsStop(); // 다른 화면으로 넘어가면 읽기 멈춤
     cur = Math.max(0, Math.min(slides.length - 1, i));
     slides.forEach((s, j) => { s.hidden = j !== cur; });
     const s = slides[cur];
@@ -65,7 +67,7 @@
     const teacher = store.get('teacher', ''), line = store.get('line', '');
     $$('[data-bind="teacher"]').forEach(el => { el.textContent = teacher || '강사 이름'; });
     $$('[data-bind="teacherLine"]').forEach(el => { el.textContent = line || '한 줄 소개를 ⚙ 설정에서 적어 주세요'; });
-    ['qr', 'qr0', 'qr2', 'qr3', 'qr4'].forEach(id => {
+    ['qr', 'qr0', 'qr2', 'qr3', 'qr4', 'qr5'].forEach(id => {
       const box = $('#' + id); box.innerHTML = '';
       const sz = Math.round(parseFloat(box.style.width) || 340);
       if (url && window.QRCode) new QRCode(box, { text: url, width: sz, height: sz, correctLevel: QRCode.CorrectLevel.M });
@@ -292,32 +294,34 @@
   }
   window.__onShow = () => { setTimeout(initMap, 60); };
 
+  // 5초마다 새로 받아도 내용이 같으면 다시 그리지 않음 (확대해서 볼 때 화면이 튀지 않게)
+  const setH = (el, h) => { if (el && el.__h !== h) { el.__h = h; el.innerHTML = h; } };
   function render() {
     const ok = LIVE.members.filter(m => m.approved), wait = LIVE.members.filter(m => !m.approved);
-    $$('[data-live=signup]').forEach(el => { el.innerHTML = `가입 <b>${ok.length}</b>명${wait.length ? ` · 승인 기다리는 <b class="warn">${wait.length}</b>명` : ''}`; });
+    $$('[data-live=signup]').forEach(el => { setH(el, `가입 <b>${ok.length}</b>명${wait.length ? ` · 승인 기다리는 <b class="warn">${wait.length}</b>명` : ''}`); });
     const pd = $('#pending');
-    if (pd) pd.innerHTML = wait.length ? `<p>승인 기다리는 분</p>${wait.map(m => ME && ME.role === 'admin' ? `<button class="chip" data-approve="${m.id}">${esc(m.name)} 승인</button>` : `<span class="chip">${esc(m.name)}</span>`).join('')}` : '';
+    if (pd) setH(pd, wait.length ? `<p>승인 기다리는 분</p>${wait.map(m => ME && ME.role === 'admin' ? `<button class="chip" data-approve="${m.id}">${esc(m.name)} 승인</button>` : `<span class="chip">${esc(m.name)}</span>`).join('')}` : '');
     $$('.subs[data-act]').forEach(el => {
       const list = ansOf(el.dataset.act);
       const missing = ok.filter(m => !list.some(a => a.id === m.id));
-      el.innerHTML = `<p>앱에 적어 낸 분 <b>${list.length}</b>명${ok.length ? ` / ${ok.length}명` : ''} <small>이름을 누르면 크게 보여요</small></p>
+      setH(el, `<p>앱에 적어 낸 분 <b>${list.length}</b>명${ok.length ? ` / ${ok.length}명` : ''} <small>이름을 누르면 크게 보여요</small></p>
         <div class="chiprow">${list.map(a => `<button class="chip" style="--c:${colorOf(a.id)}" data-ans="${a.act}|${a.id}">${esc(a.data.call || a.name)}${a.act === 's3_story' ? ` ${(a.data.parts || []).length ? '✎' : ''}${(a.data.parts || []).filter(p => p.img && p.img.url).map(() => '▣').join('')}` : ''}</button>`).join('') || '<span class="muted">아직 없어요 — 앱 “오늘 수업” 탭에서 적어요</span>'}</div>
-        ${missing.length && list.length ? `<p class="miss">아직: ${missing.map(m => esc(m.name)).join(', ')}</p>` : ''}`;
+        ${missing.length && list.length ? `<p class="miss">아직: ${missing.map(m => esc(m.name)).join(', ')}</p>` : ''}`);
     });
     $$('[data-wall]').forEach(el => {
       const list = ansOf(el.dataset.wall);
-      el.innerHTML = list.length ? list.map(a => `<button class="wnote" style="--c:${colorOf(a.id)}" data-ans="${a.act}|${a.id}"><span>${esc(summary(a))}</span><b>${esc(a.name)}</b></button>`).join('') : '<p class="muted">앱 “오늘 수업” 탭에서 적으면 여기에 바로 붙어요.</p>';
+      setH(el, list.length ? list.map(a => `<button class="wnote" style="--c:${colorOf(a.id)}" data-ans="${a.act}|${a.id}"><span>${esc(summary(a))}</span><b>${esc(a.name)}</b></button>`).join('') : '<p class="muted">앱 “오늘 수업” 탭에서 적으면 여기에 바로 붙어요.</p>');
     });
     const people = new Map(); LIVE.pins.forEach(p => people.set(p.pid, (people.get(p.pid) || { name: p.name, n: 0 })) && people.get(p.pid).n++);
-    $$('[data-live=pins]').forEach(el => { el.innerHTML = `<p>지도에 남긴 장소 <b>${LIVE.pins.length}</b>곳 · <b>${people.size}</b>명</p><div class="chiprow">${[...people].map(([id, x]) => `<span class="chip" style="--c:${colorOf(id)}">${esc(x.name)} ${x.n}</span>`).join('')}</div>`; });
+    $$('[data-live=pins]').forEach(el => { setH(el, `<p>지도에 남긴 장소 <b>${LIVE.pins.length}</b>곳 · <b>${people.size}</b>명</p><div class="chiprow">${[...people].map(([id, x]) => `<span class="chip" style="--c:${colorOf(id)}">${esc(x.name)} ${x.n}</span>`).join('')}</div>`); });
     // AI 인터뷰 진행 현황 (대답 수·정리 여부만)
     $$('[data-live=iv]').forEach(el => {
       const by = new Map(LIVE.iv.map(x => [x.id, x]));
       const started = ok.filter(m => by.get(m.id) && by.get(m.id).answers > 0).length, summed = ok.filter(m => by.get(m.id) && by.get(m.id).sum).length;
       const noAi = ok.filter(m => !m.ai);
-      el.innerHTML = `<p>인터뷰 시작 <b>${started}</b>명 · 정리까지 <b>${summed}</b>명 / ${ok.length}명${noAi.length ? ` <small>AI 동의 안 한 분: ${noAi.map(m => esc(m.name)).join(', ')}</small>` : ''}</p>
+      setH(el, `<p>인터뷰 시작 <b>${started}</b>명 · 정리까지 <b>${summed}</b>명 / ${ok.length}명${noAi.length ? ` <small>AI 동의 안 한 분: ${noAi.map(m => esc(m.name)).join(', ')}</small>` : ''}</p>
         <div class="ivb">${ok.map(m => { const x = by.get(m.id) || { answers: 0 }; const w = Math.min(100, x.answers * 10);
-          return `<div class="ivr"><button class="ivn" data-iv="${m.id}" title="눌러서 내용 보기">${esc(m.name)}</button><span class="ivbar"><i style="width:${w}%;background:${colorOf(m.id)}"></i></span><span class="ivc">${x.answers}번${x.sum ? ' <b>✓정리</b>' : ''}</span></div>`; }).join('')}</div>`;
+          return `<div class="ivr"><button class="ivn" data-iv="${m.id}" title="눌러서 내용 보기">${esc(m.name)}</button><span class="ivbar"><i style="width:${w}%;background:${colorOf(m.id)}"></i></span><span class="ivc">${x.answers}번${x.sum ? ' <b>✓정리</b>' : ''}</span></div>`; }).join('')}</div>`);
     });
     names = ok.map(m => m.name);
     if (typeof renderProg === 'function') { renderProg(); renderSpots(); }
@@ -367,6 +371,13 @@
   // ---- 3회차: 상상 카드 · 수필 낭독 · 상상 이야기 보기 ----
   // 상상 카드 6종 — 앱(extra.js IM_CATS)과 같은 내용. 카드를 누를 때마다 그 종류의 다른 상상이 나와요.
   const IM_CATS = [{"name": "말하는 사물·동물", "cards": ["밀양강 물고기가 말을 한다면", "오래된 우체통이 답장을 보낸다면", "고양이가 가곡동 길 안내를 맡는다면", "밀양역 시계가 지나간 이야기를 들려준다면", "골목 담벼락 그림이 밤마다 움직인다면", "우리 집 장독대가 할머니의 비밀을 안다면"]}, {"name": "시간 여행", "cards": ["30년 뒤 가곡동 아이가 나를 찾아온다면", "열 살의 내가 오늘 가곡동에 나타난다면", "기차에서 내리니 50년 전 밀양역이라면", "낡은 사진 속으로 걸어 들어갈 수 있다면", "100년 뒤 누군가 내 이야기책을 발견한다면", "가곡동의 하루가 거꾸로 흐른다면"]}, {"name": "사라진 것이 돌아온다면", "cards": ["사라진 가게가 하룻밤만 다시 문을 연다면", "문 닫은 옛 극장에 다시 영화가 걸린다면", "헐린 옛집이 하룻밤 다시 생겨난다면", "그리운 사람이 장날에 한 번 들른다면", "어릴 적 잃어버린 물건이 택배로 돌아온다면", "골목에서 옛 동무들 목소리가 들린다면"]}, {"name": "날씨·계절의 마법", "cards": ["가곡동에 하루 동안 눈이 펑펑 내린다면", "비가 올 때마다 옛 노래가 들린다면", "밀양강이 하룻밤 꽁꽁 얼어 길이 된다면", "한여름에 벚꽃이 다시 핀다면", "안개 속에서 또 다른 가곡동이 나타난다면", "보름달이 상상창고 지붕에 내려앉는다면"]}, {"name": "동네의 비밀", "cards": ["상상창고에 밤마다 불이 켜진다면", "가곡동 골목에 작은 기차역이 하나 더 생긴다면", "철길 아래에 비밀 통로가 있다면", "동네 큰 나무가 마을 일을 모두 기억한다면", "골목마다 숨은 문이 하나씩 있다면", "밤 12시에만 열리는 시장이 있다면"]}, {"name": "내가 주인공", "cards": ["내가 하루 동안 가곡동 동장이 된다면", "내가 투명인간이 되어 동네를 걷는다면", "내가 가곡동을 지키는 수호신이라면", "내가 이웃의 소원을 하나씩 들어준다면", "내가 새가 되어 가곡동을 내려다본다면", "내 꿈이 이웃들의 꿈과 이어진다면"]}];
+  // 5회차: 화면에서 직접 섞고 뒤집어 보는 타로 카드 22장
+  const sd = $('#symdemo');
+  if (sd) {
+    const deal = () => { const a = (window.TAROT || []).map(x => x.n); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } sd.innerHTML = a.map(n => `<button class="tc"><img class="b" src="/tarot/back.svg" alt=""><img class="f" src="${tarotImg(n)}" alt=""></button>`).join(''); };
+    deal(); sd.onclick = e => { const b = e.target.closest('.tc'); if (b) b.classList.toggle('open'); };
+    const rs = $('#symShuf'); if (rs) rs.onclick = deal;
+  }
   const c3 = $('#cards3');
   if (c3) {
     const seen = IM_CATS.map(() => []);
@@ -409,7 +420,7 @@
   // ---- 3회차: 진행 현황(data-prog)과 공유발표 스포트라이트(data-spot) ----
   const BOARD = new Map();
   const dataOf = act => id => ((LIVE.answers.find(x => x.act === act && x.id === id) || {}).data) || {};
-  const storyOf = dataOf('s3_story'), photoOf = dataOf('s4_photo');
+  const storyOf = dataOf('s3_story'), photoOf = dataOf('s4_photo'), freeOf = dataOf('s5_free');
   const seedN = d => ['who', 'where', 'what', 'ending'].filter(k => String(d[k] || '').trim()).length;
   const PRED = {
     base: m => ((BOARD.get(m.id) || {}).npages || 0) >= 2,
@@ -425,17 +436,32 @@
     pai: m => !!String(photoOf(m.id).ai || photoOf(m.id).text || '').trim(),
     ptone: m => !!photoOf(m.id).toneDone,
     pshrink: m => !!photoOf(m.id).shrunk,
-    pbook: m => !!photoOf(m.id).inBook
+    pbook: m => !!photoOf(m.id).inBook,
+    sym: m => (freeOf(m.id).picks || []).length >= 3,
+    mqa: m => (freeOf(m.id).qa || []).filter(x => String(x.a || '').trim()).length >= 3,
+    theme: m => !!(freeOf(m.id).theme && freeOf(m.id).form),
+    fdraft: m => !!String(freeOf(m.id).aidraft || '').trim(),
+    fmine: m => { const d = freeOf(m.id); return String(d.mine || '').replace(/\s/g, '').length >= 20 && (!d.aidraft || d.mine.trim() !== d.aidraft.trim()); },
+    fai: m => !!String(freeOf(m.id).ai || freeOf(m.id).text || '').trim(),
+    ftone: m => !!freeOf(m.id).toneDone,
+    ffix: m => { const d = freeOf(m.id); return !!(d.review || d.marked || d.shrunk || d.alt); },
+    ftext: m => !!String(freeOf(m.id).text || '').trim(),
+    fbook: m => !!freeOf(m.id).inBook
   };
-  const PV = { base: 'book', pbook: 'book' };
+  const PV = { base: 'book', pbook: 'book', fbook: 'book' };
+  const SYM = { 문: '🚪', 열쇠: '🔑', 새: '🐦', 나무: '🌳', 물결: '🌊', 다리: '🌉', 촛불: '🕯️', 시계: '⏰', 철길: '🛤️', 달: '🌙', 배: '⛵', 새싹: '🌱', 우산: '☂️', 편지: '✉️', 집: '🏠', 산: '⛰️', 불씨: '🔥', 꽃: '🌸', 나비: '🦋', 물고기: '🐟', 나침반: '🧭', 풍선: '🎈', 비: '🌧️', 별: '⭐' };
+  const TK = n => (window.TAROT || []).find(x => x.n === n) || { ko: '?', keys: '' };
+  // 뽑은 타로 카드(과거·현재·미래) — 예전 상징 카드 데이터도 그대로 보여 줌
+  const symRow = (d, big) => (d && (d.tarot || []).length) ? `<div class="sv-tarot${big ? ' big' : ''}">${d.tarot.map(x => `<figure><figcaption>${esc(x.pos)}</figcaption><img src="${tarotImg(x.n)}" alt=""><b>${esc(TK(x.n).ko)}</b>${big ? `<small>${esc(TK(x.n).keys)}</small>` : ''}</figure>`).join('')}</div>`
+    : `<div class="sv-syms${big ? ' big' : ''}">${((d && d.picks) || []).map(x => `<span><i>${SYM[x] || '✦'}</i>${esc(x)}</span>`).join('')}</div>`;
   const stepOf = id => { const d = photoOf(id); return d.toneDone ? '말투✓' : d.text ? '구체화' : String(d.mine || '').trim() ? '초안' : ''; }; // 진행 현황 → 이름 눌렀을 때 보여 줄 내용
-  const PLABEL = { base: '작가 소개·수필을 넣은 분 (2쪽 이상)', idea: '카드를 고른 분', seed: '씨앗을 두 칸 이상 채운 분', text: '초안을 받은 분', img: '그림을 만든 분', book: '책에 쪽이 있는 분', photo: '사진을 고른 분', qa: 'AI 질문에 두 개 이상 대답한 분', ptext: 'AI 구체화까지 한 분 (이름 옆: 지금 단계)', pmine: '3-1 내가 초안을 쓴 분', pai: '3-2 AI가 구체화한 분', ptone: '3-3 말투를 고친 분', pshrink: '3-4 요약한 분 (필요할 때만)', pbook: '사진 이야기를 책에 넣은 분' };
+  const PLABEL = { base: '작가 소개·수필을 넣은 분 (2쪽 이상)', idea: '카드를 고른 분', seed: '씨앗을 두 칸 이상 채운 분', text: '초안을 받은 분', img: '그림을 만든 분', book: '책에 쪽이 있는 분', photo: '사진을 고른 분', qa: 'AI 질문에 두 개 이상 대답한 분', ptext: 'AI 구체화까지 한 분 (이름 옆: 지금 단계)', pmine: '3-1 내가 초안을 쓴 분', pai: '3-2 AI가 구체화한 분', ptone: '3-3 말투를 고친 분', pshrink: '3-4 요약한 분 (필요할 때만)', sym: '타로 카드 세 장을 뽑은 분', mqa: '마음 읽기 질문에 세 개 이상 대답한 분', theme: '주제와 형식을 정한 분', fdraft: '3-1 AI 초안을 받은 분', fmine: '3-2 내가 다듬은 분', fai: '3-3 AI가 구체화한 분', ftone: '3-4 말투를 고친 분', ffix: '3-5 다듬은 분 (첨삭·사실/상상·요약·형식)', ftext: '글을 쓴 분', fbook: '자유 주제를 책에 넣은 분', pbook: '사진 이야기를 책에 넣은 분' };
   const approved = () => LIVE.members.filter(m => m.approved);
   function renderProg() {
     $$('[data-prog]').forEach(el => {
       const t = el.dataset.prog, ms = approved(), done = ms.filter(PRED[t]);
-      el.innerHTML = `<p>${PLABEL[t]} <b>${done.length}</b> / ${ms.length}명</p>
-        <div class="chiprow">${ms.map(m => { const st = t === 'ptext' ? stepOf(m.id) : ''; return PRED[t](m) ? `<button class="chip done" style="--c:${colorOf(m.id)}" data-pv="${t}|${m.id}">✓ ${esc(m.name)}${st ? ` · ${st}` : ''}</button>` : `<span class="chip not" style="--c:${colorOf(m.id)}">${esc(m.name)}${st ? ` · ${st}` : ''}</span>`; }).join('')}</div>`;
+      setH(el, `<p>${PLABEL[t]} <b>${done.length}</b> / ${ms.length}명</p>
+        <div class="chiprow">${ms.map(m => { const st = t === 'ptext' ? stepOf(m.id) : ''; return PRED[t](m) ? `<button class="chip done" style="--c:${colorOf(m.id)}" data-pv="${t}|${m.id}">✓ ${esc(m.name)}${st ? ` · ${st}` : ''}</button>` : `<span class="chip not" style="--c:${colorOf(m.id)}">${esc(m.name)}${st ? ` · ${st}` : ''}</span>`; }).join('')}</div>`);
     });
   }
   const SPOT = new Map(); // wrap → { sel, used:Set, page }
@@ -445,14 +471,18 @@
     const ms = approved().filter(PRED[t]);
     if (!ms.length) return '<p class="muted" style="font-size:30px">아직 올라온 것이 없어요. 앱에서 저장하면 여기에 바로 떠요.</p>';
     if (t === 'photo') return `<div class="sv-grid">${ms.map(m => { const p = photoOf(m.id).photo; return `<button data-spick="${m.id}"><img src="${esc(p.thumb || p.url)}" alt="">${esc(m.name)}</button>`; }).join('')}</div>`;
+    if (t === 'sym') return `<div class="sv-wall">${ms.map(m => `<button data-spick="${m.id}" style="--c:${colorOf(m.id)}"><b>${esc(m.name)}</b>${symRow(freeOf(m.id))}</button>`).join('')}</div>`;
+    if (['theme', 'ftext', 'fdraft', 'fmine', 'fai', 'ftone', 'ffix'].includes(t)) return `<div class="sv-wall">${ms.map(m => { const d = freeOf(m.id); return `<button data-spick="${m.id}" style="--c:${colorOf(m.id)}"><b>${esc(m.name)}</b>${esc(`「${d.title || d.theme || ''}」 ${d.form || ''}`).slice(0, 80)}</button>`; }).join('')}</div>`;
     if (t === 'qa' || t === 'ptext') return `<div class="sv-wall">${ms.map(m => { const d = photoOf(m.id); return `<button data-spick="${m.id}" style="--c:${colorOf(m.id)}"><b>${esc(m.name)}</b>${esc(t === 'qa' ? d.memo || `질문 ${d.qa.length}개` : `「${d.title || '제목 없음'}」`).slice(0, 90)}</button>`; }).join('')}</div>`;
     if (t === 'img') return `<div class="sv-grid">${ms.map(m => { const p = (storyOf(m.id).parts || []).find(x => x.img && x.img.url); return `<button data-spick="${m.id}"><img src="${esc(p.img.thumb || p.img.url)}" alt="">${esc(m.name)}</button>`; }).join('')}</div>`;
     return `<div class="sv-wall">${ms.map(m => { const d = storyOf(m.id), b = BOARD.get(m.id) || {};
       const line = t === 'idea' ? `${d.card || ''}${d.idea ? ` — ${d.idea}` : ''}` : t === 'seed' ? [d.who, d.where, d.what].filter(Boolean).join(' · ') : t === 'text' ? `「${d.title || '제목 없음'}」` : `${b.npages || 0}쪽 · 그림 ${b.imgs || 0}장`;
       return `<button data-spick="${m.id}" style="--c:${colorOf(m.id)}"><b>${esc(m.name)}</b>${esc(line).slice(0, 90)}</button>`; }).join('')}</div>`;
   }
-  async function spotView(wrap, t, id) {
-    const v = wrap.querySelector('.spot-v'), d = storyOf(id), name = nameOf(id);
+  async function spotView(wrap, t, id) { ttsStop(); await spotView0(wrap, t, id); const v = wrap.querySelector('.spot-v'); if (v) addTts(v); }
+  async function spotView0(wrap, t, id) {
+    const v = wrap.querySelector('.spot-v'); v.dataset.ov = '0'; v.__h = '';
+    const d = storyOf(id), name = nameOf(id);
     if (t === 'idea') v.innerHTML = `<p class="sv-k">${esc(name)}님의 소재</p><p class="sv-card">${esc(d.card || '카드 없음')}</p><p class="sv-idea">${nl(d.idea)}</p>`;
     if (t === 'seed') v.innerHTML = `<p class="sv-k">${esc(name)}님의 이야기 씨앗 · ${esc(d.card || '')}</p><div class="sv-seed">${[['누가', d.who], ['어디서', d.where], ['무슨 일이', d.what], ['어떻게 끝날까', d.ending]].map(([k, x]) => `<div><b>${k}</b><span>${nl(x) || '—'}</span></div>`).join('')}</div>`;
     if (t === 'text') v.innerHTML = `<p class="sv-k">${esc(name)}님의 상상 이야기</p><h3 class="sv-title">${esc(d.title || '제목 없음')}</h3>${(d.parts || []).map((p, i) => `${i ? '<hr style="border:0;border-top:2px dashed #DCE3D3;margin:18px 0">' : ''}<p class="sv-text">${nl(p.text)}</p>`).join('')}`;
@@ -463,6 +493,12 @@
       const body = t === 'pmine' ? p.mine : t === 'pai' ? (p.ai || p.text) : p.text;
       const lab = { pmine: '3-1 내가 쓴 초안', pai: '3-2 AI가 구체화한 글', ptone: '3-3 내 말투로 고친 글', pshrink: `3-4 요약한 글 (${p.shrunk || ''})` }[t];
       v.innerHTML = `<p class="sv-k">${esc(name)}님 · ${lab}</p>${p.photo ? `<img class="sv-thumb" src="${esc(p.photo.thumb || p.photo.url)}" alt="">` : ''}${t !== 'pmine' && p.title ? `<h3 class="sv-title">${esc(p.title)}</h3>` : ''}<p class="sv-text">${nl(body)}</p>`; }
+    if (t === 'sym') { const d = freeOf(id); v.innerHTML = `<p class="sv-k">${esc(name)}님이 뽑은 타로 카드 · 과거 · 현재 · 미래</p>${symRow(d, true)}`; }
+    if (t === 'theme') { const d = freeOf(id); v.innerHTML = `<p class="sv-k">${esc(name)}님의 주제</p>${symRow(d)}<h3 class="sv-title" style="margin-top:20px">「${esc(d.theme || '')}」</h3><p class="sv-idea">${esc(d.form || '')} · ${esc(d.ratio || '')}</p>`; }
+    if (['fdraft', 'fmine', 'fai', 'ftone', 'ffix', 'ftext'].includes(t)) { const d = freeOf(id);
+      const body = t === 'fdraft' ? d.aidraft : t === 'fmine' ? d.mine : t === 'fai' ? (d.ai || d.text) : d.text;
+      const lab = { fdraft: '3-1 AI가 써 준 초안', fmine: '3-2 내가 다듬은 글', fai: '3-3 AI가 구체화한 글', ftone: '3-4 내 말투로 고친 글', ffix: `3-5 다듬은 글${[d.review && '첨삭', d.marked && '사실·상상 표시', d.shrunk && `요약(${d.shrunk})`].filter(Boolean).map(x => ` · ${x}`).join('')}`, ftext: '완성한 글' }[t];
+      v.innerHTML = `<p class="sv-k">${esc(name)}님 · ${lab} · ${esc(d.form || '')}</p>${symRow(d)}${!['fdraft', 'fmine'].includes(t) && d.title ? `<h3 class="sv-title">${esc(d.title)}</h3>` : ''}${t === 'ffix' && d.marked ? `<p class="sv-text">${esc(d.marked).replace(/⟦([\s\S]*?)⟧/g, '<mark class="fic">$1</mark>').replace(/\n/g, '<br>')}</p><p class="muted" style="font-size:22px"><mark class="fic">보라색</mark>은 상상, 나머지는 실제 기억</p>` : `<p class="sv-text${d.form === '시' ? ' poem' : ''}">${nl(body)}</p>`}${t === 'ffix' && d.review ? `<div class="sv-rev"><b>AI 첨삭 · 잘된 점</b><p>${esc(d.review.good)}</p></div>` : ''}`; }
     if (t === 'ptext') { const p = photoOf(id); v.innerHTML = `<p class="sv-k">${esc(name)}님의 사진 이야기 · ${stepOf(id) || ''}</p>${p.photo ? `<img class="sv-thumb" src="${esc(p.photo.thumb || p.photo.url)}" alt="">` : ''}<h3 class="sv-title">${esc(p.title || '제목 없음')}</h3><p class="sv-text">${nl(p.text)}</p>${p.mine ? `<details class="sv-mine"><summary>3-1 내가 쓴 초안 보기</summary><p>${nl(p.mine)}</p></details>` : ''}`; }
     if (t === 'book') {
       v.innerHTML = '<p class="muted" style="font-size:28px">책을 불러오는 중…</p>';
@@ -492,7 +528,7 @@
     if (st.zoom != null && P[st.zoom]) {
       const z = st.zoom;
       v.innerHTML = `<div class="bkv"><div class="bkv-nav" style="justify-content:space-between"><span class="sv-k" style="margin:0">${esc(name)}님의 책 · ${z + 1} / ${P.length}쪽</span><span style="display:flex;gap:10px"><button class="btn" data-bzs="-1" ${z > 0 ? '' : 'disabled'}>◀ 앞 쪽</button><button class="btn" data-bz="-1">두 쪽 보기</button><button class="btn" data-bzs="1" ${z + 1 < P.length ? '' : 'disabled'}>뒤 쪽 ▶</button></span></div>${zoomBox(P[z], z + 1)}</div>`;
-      v.scrollTop = 0; return;
+      v.scrollTop = 0; addTts(v); return;
     }
     v.innerHTML = `<div class="bkv"><p class="sv-k" style="text-align:center">${esc(name)}님의 책 · ${P.length}쪽</p>
       <div class="bkv-sp">${P.length ? pageBox(P[i], i + 1) + pageBox(P[i + 1], i + 2) : '<p class="muted">아직 쪽이 없어요.</p>'}</div>
@@ -507,10 +543,34 @@
           <p class="muted" style="margin:0;font-size:22px">이름을 눌러도 바로 보여요</p><div class="chiprow spot-list"></div></div><div class="spot-v"></div>`;
       }
       const st = SPOT.get(wrap), ms = approved().filter(PRED[t]);
-      wrap.querySelector('.spot-list').innerHTML = ms.map(m => `<button class="chip ${st.used.has(m.id) ? 'used' : ''} ${st.sel === m.id ? 'cur' : ''}" style="--c:${colorOf(m.id)}" data-spick="${m.id}">${st.used.has(m.id) ? '✓ ' : ''}${esc(m.name)}</button>`).join('') || '<span class="muted">아직 없어요</span>';
-      if (!st.sel) wrap.querySelector('.spot-v').innerHTML = spotOverview(t);
+      setH(wrap.querySelector('.spot-list'), ms.map(m => `<button class="chip ${st.used.has(m.id) ? 'used' : ''} ${st.sel === m.id ? 'cur' : ''}" style="--c:${colorOf(m.id)}" data-spick="${m.id}">${st.used.has(m.id) ? '✓ ' : ''}${esc(m.name)}</button>`).join('') || '<span class="muted">아직 없어요</span>');
+      if (!st.sel) { const sv = wrap.querySelector('.spot-v'); if (sv.dataset.ov !== '1') sv.__h = ''; sv.dataset.ov = '1'; setH(sv, spotOverview(t)); }
     });
   }
+  // ---- 읽어 주기 (AI 목소리 → 안 되면 브라우저 목소리) ----
+  let ttsAudio = null, ttsOn = null;
+  const ttsStop = () => { if (ttsAudio) { ttsAudio.pause(); ttsAudio = null; } if (window.speechSynthesis) speechSynthesis.cancel(); if (ttsOn) { ttsOn.textContent = '🔊 읽어 주기'; ttsOn.classList.remove('on'); } ttsOn = null; };
+  window.__ttsStop = () => ttsStop();
+  const chunks = t => { const out = []; let cur = ''; String(t).split(/\n{2,}/).forEach(p => { if ((cur + '\n\n' + p).length > 3500 && cur) { out.push(cur); cur = p; } else cur = cur ? cur + '\n\n' + p : p; }); if (cur) out.push(cur); return out.flatMap(c => c.length > 3800 ? c.match(/[\s\S]{1,3500}/g) : [c]); };
+  async function ttsPlay(btn, text) {
+    if (ttsOn === btn) { ttsStop(); return; } ttsStop(); ttsOn = btn; btn.classList.add('on'); btn.textContent = '■ 그만 읽기';
+    const parts = chunks(text);
+    for (const part of parts) {
+      if (ttsOn !== btn) return;
+      try {
+        const r = await fetch('/api/tts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: TOKEN, text: part }) });
+        if (!r.ok) throw new Error('tts');
+        const url = URL.createObjectURL(await r.blob()); if (ttsOn !== btn) return;
+        ttsAudio = new Audio(url); await new Promise((res, rej) => { ttsAudio.onended = res; ttsAudio.onerror = rej; ttsAudio.play().catch(rej); }); URL.revokeObjectURL(url);
+      } catch {
+        if (ttsOn !== btn || !window.speechSynthesis) { if (ttsOn === btn) ttsStop(); return; }
+        await new Promise(res => { const u = new SpeechSynthesisUtterance(part); u.lang = 'ko-KR'; u.rate = 0.95; const ko = speechSynthesis.getVoices().find(x => /ko/i.test(x.lang)); if (ko) u.voice = ko; u.onend = res; u.onerror = res; speechSynthesis.speak(u); });
+      }
+    }
+    if (ttsOn === btn) ttsStop();
+  }
+  const addTts = v => { const tx = v.querySelector('.sv-text, .bkv-z p:not(.muted)'); if (!tx || v.querySelector('[data-tts]')) return; const k = v.querySelector('.sv-k'); const b = '<button class="btn tts" data-tts>🔊 읽어 주기</button>'; if (k) k.insertAdjacentHTML('beforeend', ' ' + b); else v.insertAdjacentHTML('afterbegin', b); };
+  document.addEventListener('click', e => { const b = e.target.closest('[data-tts]'); if (!b) return; const v = b.closest('.spot-v, .pvwrap, .ansv-in'); const title = (v.querySelector('.sv-title, .bkv-z h4') || {}).textContent || ''; const body = [...v.querySelectorAll('.sv-text, .bkv-z p:not(.muted)')].map(x => x.innerText).join('\n\n'); ttsPlay(b, [title, body].filter(Boolean).join('\n\n')); });
   function spotPick(wrap, id) {
     const st = SPOT.get(wrap); st.sel = id; st.used.add(id); st.zoom = null;
     wrap.querySelector('.spot-name').textContent = nameOf(id); renderSpots(); spotView(wrap, wrap.dataset.spot, id);

@@ -83,6 +83,47 @@ const PSTORY = (len, form, mine) => `당신은 주민의 사진과 이야기를 
 - 분량: ${LEN[len] || LEN.full}. ${len === 'full' ? '분량을 아끼지 말고, 결말에 이르기까지 필요한 장면을 모두 씁니다. 결말도 한 문단 이상으로 차분히 씁니다.' : '분량 안에서 네 단계의 비중을 고르게 나누고, 결말까지 자연스럽게 이어지게 씁니다.'}
 - 번역투, 뻔한 교훈, 과장된 감탄, "소중한 추억" 같은 말은 피합니다. 문단 사이는 빈 줄 하나.
 - 제목은 15자 안팎으로 글 속 장면이나 사물로 짓습니다.`;
+// ---- 5회차 마음 읽기 · 자유 주제 ----
+const SAFE = `- 이것은 심리 진단이 아니라 글감을 찾는 대화입니다. 병명·증상·건강·성격 유형을 판단하거나 단정하지 않습니다. 상처를 캐묻지 않고, 대답하기 싫으면 건너뛰어도 된다는 태도로 다정하게 씁니다.`;
+const MQ = `당신은 타로 카드로 글감을 함께 찾는 다정한 글쓰기 안내자입니다. 참여자가 과거·현재·미래 자리에 뽑은 타로 메이저 아르카나 세 장(전통적인 뜻과 이야기 실마리 포함)과 지금까지의 문답을 보고, 그 카드가 일깨우는 기억·사람·장소·바람을 꺼낼 질문 8개를 만듭니다.
+${SAFE}
+- 자리의 뜻을 살려 묻습니다. 과거 카드는 실제 지나온 기억을, 현재 카드는 지금의 마음과 일상을, 미래 카드는 바람과 상상을 묻습니다. 예) "과거 자리의 '태양'처럼 가장 환하게 웃던 날은 언제였나요?", "미래 자리의 '별'처럼 앞으로 붙잡고 싶은 희망은 무엇인가요?"
+- 카드 그림에 보이는 것(별·달·태양·길·물·사람의 몸짓)도 질문 재료로 씁니다. 점이나 운세처럼 단정하지 않습니다.
+- 실제 기억을 묻는 질문과 상상을 여는 질문을 섞습니다(사실과 허구가 섞인 글을 쓰기 위해).
+- 쉬운 질문에서 깊은 질문 순서로, 한 질문은 한 문장, 공손하게("당신"이라고 부르지 말고 주어 없이).
+- 이미 대답한 것은 다시 묻지 않습니다.`;
+const MREAD = `당신은 타로 카드 풀이의 방식(자리마다 카드의 뜻을 읽고, 세 장을 하나의 흐름으로 잇기)을 빌려, 참여자의 대답과 함께 마음을 따뜻하게 되비추고 글의 주제를 찾는 글쓰기 안내자입니다.
+- 점·운세·예언이 아닙니다. "~할 것이다" 같은 미래 단정은 하지 않고, 카드는 이야기의 실마리로만 씁니다.
+${SAFE}
+- reading: 과거·현재·미래 카드를 차례로 짚고(각 카드의 전통적인 뜻 + 참여자의 대답), 세 장이 이어지는 흐름을 3~4문장으로 되비춥니다. "과거의 '태양'은 ~처럼 보여요", "~를 소중히 여기시는 것 같아요"처럼 부드럽게. 판단·평가·조언은 하지 않습니다.
+- 주제 세 개(t1, t2, t3)를 추천합니다. 각 주제는 "제목 | 형식 | 사실 비율 | 이유" 한 줄로 씁니다.
+  · 제목: 15자 안팎의 글 제목 후보
+  · 형식: 시, 산문, 수필, 동화 중 하나 (세 주제의 형식은 되도록 서로 다르게)
+  · 사실 비율: 실제 기억과 상상의 비율. 예) 사실 70 상상 30 — 실제 기억을 뼈대로 하고 상상을 섞는 글을 권합니다
+  · 이유: 어떤 카드(자리)·대답에서 왔는지 한 문장`;
+const CRAFT = {
+  시: '시: 연과 행을 나누고(줄바꿈으로 행, 빈 줄로 연), 3~5연. 설명하지 말고 이미지·소리·감각으로 보여 줍니다. 핵심 낱말이나 구절을 한두 번 되풀이해 울림을 줍니다. 마지막 연은 여운으로 닫습니다. 산문처럼 길게 늘어놓지 않습니다.',
+  산문: '산문: 한 장면에서 시작해 생각이 번져 가는 글. 장면 → 떠오른 기억 → 생각의 확장 → 다시 장면으로 돌아와 닫기. 문장의 호흡을 고르게 합니다.',
+  수필: '수필: 1인칭 체험을 구체적인 장면으로 보여 주고, 그 체험에서 얻은 깨달음을 억지 교훈 없이 담백하게 닫습니다. 체험(발단) → 사건의 전개 → 마음이 크게 움직이는 순간 → 지금의 나.',
+  동화: '동화: 주인공(사람·동물·사물) → 주인공의 바람 → 길을 막는 시련 → 도움이나 깨달음 → 변화한 결말. 아이도 소리 내어 읽기 좋은 쉬운 문장과 의성어·의태어, 반복되는 말. 타로 카드 그림 속 사물·인물이 등장인물이나 열쇠가 되게 합니다.'
+};
+const FSTORY = (len, form, ratio, mine) => `당신은 주민과 함께 마을 이야기책을 만드는 글쓰기 선생님입니다. 참여자가 과거·현재·미래 자리에 뽑은 타로 카드 세 장, 문답, 정한 주제로 ${form || '수필'} 한 편을 씁니다. 배경은 경상남도 밀양시 가곡동과 참여자의 삶입니다.
+${mine ? '- 참여자가 직접 쓴 <내 초안>을 뼈대로 삼아 구체화합니다. 초안의 사건 순서·표현·문장·말투를 최대한 살리고, 문답에서 장면과 마음을 찾아 채웁니다.' : ''}
+- 형식의 짜임새를 지킵니다. ${CRAFT[form] || CRAFT['수필']}
+- 사실과 허구를 섞습니다. ${ratio || '사실 70 상상 30'} 정도로, 문답에 나온 실제 기억(특히 과거·현재 카드)을 뼈대로 하고 카드에서 온 상상(특히 미래 카드)을 자연스럽게 엮습니다. 실제 사람·장소의 이름은 문답에 나온 것만 씁니다.
+- 뽑은 타로 카드 세 장의 상징(그림 속 사물·빛·몸짓)과 과거→현재→미래의 흐름이 글 안에 자연스럽게 녹아들게 합니다. 카드 이름을 그대로 나열하지 않습니다.
+- 분량: ${LEN[len] || LEN.full}. ${len === 'full' ? '분량을 아끼지 말고 결말까지 차근차근 씁니다.' : '분량 안에서 짜임새를 고르게 나누고 결말까지 자연스럽게 잇습니다.'} 결말을 서둘러 몰아치지 않습니다.
+- 번역투, 뻔한 교훈, 과장된 감탄, "소중한 추억" 같은 말은 피합니다.
+- 제목은 15자 안팎으로 글 속 장면이나 상징으로 짓습니다.`;
+const MARKS = `아래 글에서 상상(허구)으로 지어낸 부분을 찾아 표시합니다. <문답>에 나온 실제 기억은 사실입니다.
+- 글자는 한 글자도 바꾸지 않고, 상상으로 보이는 구절만 ⟦ 와 ⟧ 로 감쌉니다. 사실 부분은 그대로 둡니다.
+- 판단이 어려우면 표시하지 않습니다.`;
+const REVIEW = form => `당신은 다정하고 정확한 글쓰기 선생님입니다. 아래 ${form || ''} 글을 읽고 첨삭합니다.
+- good: 이 글에서 가장 잘된 점 한 가지를 구체적으로(어느 문장이 왜 좋은지) 한두 문장.
+- fix1, fix2, fix3: 고치면 좋아질 점 세 가지. 각각 "어느 부분 → 이렇게 바꿔 보기" 형식으로 짧고 구체적으로. ${form ? `${form}의 짜임새(${CRAFT[form] ? CRAFT[form].split(':')[1].slice(0, 60) : ''}…)를 기준으로 봅니다.` : ''}
+- 맞춤법보다 장면·표현·짜임새를 먼저 봅니다. 글쓴이의 말투는 존중합니다.`;
+const REFORM = form => `아래 글의 내용과 핵심 장면은 그대로 두고 형식만 ${form}(으)로 바꿔 다시 씁니다. ${CRAFT[form] || ''} 글쓴이의 표현을 되도록 살립니다. 제목도 형식에 맞게 다시 짓습니다.`;
+
 const SHRINK = target => `아래 글을 ${target === 'p1' ? '책 한 쪽(공백 포함 650자 이내)' : target === 'p2' ? '책 두 쪽(공백 포함 1,400자 이내)' : '책 네 쪽(공백 포함 2,800자 이내)'}에 들어가게 줄입니다.
 - 이야기의 서사 구조(발단·전개·절정·결말)가 그대로 보이게 남깁니다. 결말을 잘라 내거나 한 문장으로 뭉뚱그리지 않습니다.
 - 글쓴이의 표현과 문장을 최대한 그대로 쓰고, 덜 중요한 문장과 꾸밈말을 덜어냅니다. 새 내용은 넣지 않습니다.
@@ -98,7 +139,7 @@ module.exports = async function handler(req, res) {
     res.status(500).json({ error: 'AI 서버 설정(환경변수)이 비어 있어요. 운영자에게 알려 주세요.' }); return;
   }
   const body = readBody(req);
-  const mode = ['ask', 'sum', 'plan', 'essay', 'fit', 'story', 'intro', 'pq', 'pstory', 'pmore', 'shrink'].includes(body.mode) ? body.mode : 'ask';
+  const mode = ['ask', 'sum', 'plan', 'essay', 'fit', 'story', 'intro', 'pq', 'pstory', 'pmore', 'shrink', 'mq', 'mread', 'fdraft', 'fstory', 'fmore', 'marks', 'review', 'reform'].includes(body.mode) ? body.mode : 'ask';
   // msgs: [{r:'ai'|'me', t:'...'}] — 최근 40개만
   const msgs = (Array.isArray(body.msgs) ? body.msgs : []).filter(m => m && m.t).slice(-40).map(m => ({ r: m.r === 'ai' ? 'ai' : 'me', t: clip(m.t, 2000) }));
   const seed = clip(body.seed, 300);
@@ -157,6 +198,49 @@ module.exports = async function handler(req, res) {
           const j = await claudeJSON({ system: PSTORY(len, body.form, mine), messages: [{ role: 'user', content }], max_tokens: len === 'full' ? 5000 : 4000, schema: { title: 1, text: 1 } });
           out = { title: clip(j.title, 60), text: clip(j.text, 12000), more: !!j.cut };
         }
+      }
+    } else if (['mq', 'mread', 'fdraft', 'fstory', 'fmore'].includes(mode)) {
+      const cards = (Array.isArray(body.cards) ? body.cards : []).slice(0, 3).filter(x => x && x.name);
+      const picks = cards.length ? cards.map(x => `${clip(x.pos, 6)} — ${clip(x.name, 20)}(${clip(x.en, 30)}): ${clip(x.keys, 80)} / 이야기 실마리: ${clip(x.story, 80)}`) : (Array.isArray(body.picks) ? body.picks : []).slice(0, 3).map(x => clip(x, 20)).filter(Boolean);
+      const qa = (Array.isArray(body.qa) ? body.qa : []).filter(x => x && (x.q || x.a)).slice(0, 24).map(x => `질문: ${clip(x.q, 300)}\n대답: ${clip(x.a, 1500) || '(건너뜀)'}`).join('\n\n');
+      const mine = clip(body.draft, 6000).trim(), form = ['시', '산문', '수필', '동화'].includes(body.form) ? body.form : '수필';
+      const ratio = clip(body.ratio, 30), len = ['p1', 'p2', 'full'].includes(body.len) ? body.len : 'full';
+      if (!picks.length) { res.status(400).json({ error: '타로 카드를 먼저 뽑아 주세요.' }); return; }
+      const info = [cards.length ? `뽑은 타로 카드 (과거·현재·미래 자리):\n${picks.join('\n')}` : `고른 상징 카드: ${picks.join(', ')}`, qa && `<문답>\n${qa}\n</문답>`, body.theme && `정한 주제: ${clip(body.theme, 100)}`, (mode === 'fstory' || mode === 'fmore') && mine && `<내 초안>\n${mine}\n</내 초안>`].filter(Boolean).join('\n\n');
+      if (mode === 'mq') {
+        const j = await claudeJSON({ system: MQ, messages: [{ role: 'user', content: info }], max_tokens: 2000, schema: { q1: 1, q2: 1, q3: 1, q4: 1, q5: 1, q6: 1, q7: 1, q8: 1 } });
+        out = { qs: [j.q1, j.q2, j.q3, j.q4, j.q5, j.q6, j.q7, j.q8].map(x => clip(x, 200).trim()).filter(Boolean) };
+      } else if (mode === 'mread') {
+        const j = await claudeJSON({ system: MREAD, messages: [{ role: 'user', content: info }], max_tokens: 2000, schema: { reading: 1, t1: 1, t2: 1, t3: 1 } });
+        const th = [j.t1, j.t2, j.t3].map(x => String(x || '').split('|').map(y => y.trim())).filter(x => x[0]).map(([title, form, ratio, why]) => ({ title: clip(title, 40), form: ['시', '산문', '수필', '동화'].includes(form) ? form : '수필', ratio: clip(ratio, 30), why: clip(why, 200) }));
+        out = { reading: clip(j.reading, 600).trim(), themes: th };
+      } else if (mode === 'fdraft') { // 3-1 AI 초안: 참여자가 고치기 좋은 짧은 뼈대
+        const j = await claudeJSON({ system: FSTORY('p1', form, ratio, '') + `\n\n지금은 '초안'입니다. 참여자가 직접 고쳐 쓸 뼈대이므로 공백 포함 300~500자(시는 3연 이하)로 짧고 쉽게 씁니다. 처음·가운데·끝이 보이게 하되 꾸밈은 줄이고, 참여자가 자기 기억을 덧붙일 자리를 남깁니다.`,
+          messages: [{ role: 'user', content: info }], max_tokens: 2000, schema: { title: 1, text: 1 } });
+        out = { title: clip(j.title, 60).trim(), text: clip(j.text, 3000).trim() };
+      } else if (mode === 'fmore') {
+        const j = await claudeJSON({ system: FSTORY(len, form, ratio, mine) + `\n\n지금은 이어 쓰기입니다. 제목은 「${clip(body.title, 60)}」입니다. <앞부분>은 이미 쓴 글입니다. 되풀이하지 말고 끊긴 바로 다음 글자부터 이어서 결말까지 씁니다.`,
+          messages: [{ role: 'user', content: `${info}\n\n<앞부분>\n${clip(body.text, 14000)}\n</앞부분>` }], max_tokens: 5000, schema: { text: 1 } });
+        out = { text: clip(j.text, 12000), more: !!j.cut };
+      } else {
+        const j = await claudeJSON({ system: FSTORY(len, form, ratio, mine), messages: [{ role: 'user', content: info }], max_tokens: len === 'full' ? 5000 : 4000, schema: { title: 1, text: 1 } });
+        out = { title: clip(j.title, 60).trim(), text: clip(j.text, 12000), more: !!j.cut };
+      }
+    } else if (mode === 'marks' || mode === 'review' || mode === 'reform') {
+      const text = clip(body.text, 9000);
+      if (text.replace(/\s/g, '').length < 30) { res.status(400).json({ error: '글을 조금 더 써 주세요.' }); return; }
+      const form = ['시', '산문', '수필', '동화'].includes(body.form) ? body.form : '';
+      if (mode === 'marks') {
+        const qa = (Array.isArray(body.qa) ? body.qa : []).filter(x => x && x.a).slice(0, 24).map(x => `질문: ${clip(x.q, 300)}\n대답: ${clip(x.a, 1500)}`).join('\n\n');
+        const j = await claudeJSON({ system: MARKS, messages: [{ role: 'user', content: `<문답>\n${qa || '(없음)'}\n</문답>\n\n<글>\n${text}\n</글>` }], max_tokens: 6000, schema: { text: 1 } });
+        out = { marked: clip(j.text, 12000) };
+      } else if (mode === 'review') {
+        const j = await claudeJSON({ system: REVIEW(form), messages: [{ role: 'user', content: `<글>\n${text}\n</글>` }], max_tokens: 1500, schema: { good: 1, fix1: 1, fix2: 1, fix3: 1 } });
+        out = { good: clip(j.good, 400).trim(), fixes: [j.fix1, j.fix2, j.fix3].map(x => clip(x, 300).trim()).filter(Boolean) };
+      } else {
+        const to = ['시', '산문', '수필', '동화'].includes(body.to) ? body.to : '시';
+        const j = await claudeJSON({ system: REFORM(to), messages: [{ role: 'user', content: `<글>\n${text}\n</글>` }], max_tokens: 5000, schema: { title: 1, text: 1 } });
+        out = { title: clip(j.title, 60).trim(), text: clip(j.text, 12000).trim() };
       }
     } else if (mode === 'shrink') {
       const text = clip(body.text, 9000), target = ['p1', 'p2', 'p4'].includes(body.target) ? body.target : 'p1';

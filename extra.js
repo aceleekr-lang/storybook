@@ -963,14 +963,14 @@ ${pts.map(([x, y, n]) => `<g transform="translate(${x} ${y})"><circle r="32" fil
 
   // ---------- 4회차: 사진 한 장, 이야기 하나 ----------
   const PHOTO_ACT = 's4_photo';
-  async function textPages(head, text, sec, hint) { // 글을 '글만' 쪽 여러 장으로 (첫 쪽에 제목)
+  async function textPages(head, text, sec, hint, tpl = 'text') { // 글을 '글만'(또는 '시') 쪽 여러 장으로 (첫 쪽에 제목)
     const out = []; let rest = String(text || '').trim(), first = true;
     while (rest && out.length < 10) {
-      const n = await Book.fitLength({ tpl: 'text', head: first ? head : '', text: rest, imgs: [] }, myTrack());
+      const n = await Book.fitLength({ tpl, head: first ? head : '', text: rest, imgs: [] }, myTrack());
       let cut = Math.max(40, n);
       if (cut < rest.length) { const pb = rest.lastIndexOf('\n', cut), sb = Math.max(rest.lastIndexOf('. ', cut), rest.lastIndexOf('다.', cut) + 1, rest.lastIndexOf('요.', cut) + 1); if (pb > cut * .6) cut = pb; else if (sb > cut * .6) cut = sb + 1; }
       const atPara = /\n\s*$/.test(rest.slice(0, cut)) || /^[ \t]*\n/.test(rest.slice(cut));
-      const pgx = { tpl: 'text', sec, head: first ? head : '', text: rest.slice(0, cut).trim(), hint };
+      const pgx = { tpl, sec, head: first ? head : '', text: rest.slice(0, cut).trim(), hint };
       if (out.length && out[out.length - 1]._open) pgx.cont = true;
       if (cut < rest.length && !atPara) { pgx.contNext = true; pgx._open = true; }
       out.push(pgx);
@@ -1095,6 +1095,167 @@ ${pts.map(([x, y, n]) => `<g transform="translate(${x} ${y})"><circle r="32" fil
           await save();
           const pages = (D.photo ? [{ tpl: 'fullSafe', sec: 'photo', imgs: [D.photo], hint: '사진 이야기 — 사진 (4회차)' }] : []).concat(await textPages(D.title, D.text, 'photo', '사진 이야기 — 글 (4회차)'));
           const n = await appendPage(pages); D.inBook = true; await save(); toast(`내 책에 ${pages.length}쪽을 넣었어요 (지금 모두 ${n}쪽). "내 책 쓰기"에서 다듬어 주세요.`);
+        });
+      }
+    };
+  };
+
+  // ---------- 5회차: 마음 읽기 — 타로 카드(과거·현재·미래) → 마음 읽기 → 주제 → 형식별 쓰기 ----------
+  const FREE_ACT = 's5_free';
+  const SYMBOLS = [['🚪', '문'], ['🔑', '열쇠'], ['🐦', '새'], ['🌳', '나무'], ['🌊', '물결'], ['🌉', '다리'], ['🕯️', '촛불'], ['⏰', '시계'], ['🛤️', '철길'], ['🌙', '달'], ['⛵', '배'], ['🌱', '새싹'],
+    ['☂️', '우산'], ['✉️', '편지'], ['🏠', '집'], ['⛰️', '산'], ['🔥', '불씨'], ['🌸', '꽃'], ['🦋', '나비'], ['🐟', '물고기'], ['🧭', '나침반'], ['🎈', '풍선'], ['🌧️', '비'], ['⭐', '별']];
+  const symOf = n => (SYMBOLS.find(x => x[1] === n) || ['✦', n])[0];
+  const FORMS5 = ['시', '산문', '수필', '동화'];
+  const RATIOS = ['사실 90 상상 10', '사실 70 상상 30', '사실 50 상상 50', '사실 30 상상 70'];
+  VIEWS.mind = async v => {
+    const D = Object.assign({ picks: [], tarot: [], qa: [], reading: '', themes: [], theme: '', form: '', ratio: '사실 70 상상 30', len: 'full', aidraft: '', mine: '', title: '', text: '', ai: '', toneDone: false, review: null, marked: '', alt: null, shrunk: '', prev: '', img: null, inBook: false },
+      ((await api('answer_get')).answers[FREE_ACT] || {}).data);
+    let saveT = null, deck = [], shuffled = false;
+    const T = window.TAROT || [], POS = window.TAROT_POS || ['과거', '현재', '미래'];
+    const card = n => T.find(x => x.n === n) || { n, ko: '?', keys: '', story: '' };
+    const svState = (t, bad) => $$('.svstate', v).forEach(el => { el.textContent = t; el.classList.toggle('bad', !!bad); });
+    const save = () => { clearTimeout(saveT); saveT = null; S.dirty = false; svState('저장 중…');
+      return api('answer_save', { act: FREE_ACT, data: D }).then(() => svState(`저장했어요 ${new Date().toTimeString().slice(0, 5)}`))
+        .catch(err => { S.dirty = true; svState('저장하지 못했어요 — 인터넷 연결을 확인해 주세요', true); toast(err.message, true); }); };
+    const later = () => { clearTimeout(saveT); S.dirty = true; svState('고치는 중…'); saveT = setTimeout(save, 800); };
+    S.flush = async () => { if (saveT || S.dirty) await save(); };
+    const mineOk = () => String(D.mine || '').replace(/\s/g, '').length >= 20;
+    const editedOk = () => mineOk() && (!D.aidraft || D.mine.trim() !== D.aidraft.trim()); // 3-2 내가 다듬기: AI 초안에서 한 군데라도 고쳤는지
+    const newDeck = () => { const left = T.filter(x => !D.tarot.some(y => y.n === x.n)).map(x => x.n); for (let i = left.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [left[i], left[j]] = [left[j], left[i]]; } deck = left; };
+    const cardsInfo = () => D.tarot.map(x => { const c = card(x.n); return { pos: x.pos, name: c.ko, en: c.en, keys: c.keys, story: c.story }; });
+    const base = () => ({ picks: D.picks, cards: cardsInfo(), qa: D.qa, theme: D.theme, form: D.form || '수필', ratio: D.ratio, len: D.len, draft: D.mine });
+    const markHTML = t => esc(t).replace(/⟦([\s\S]*?)⟧/g, '<mark class="fic">$1</mark>').replace(/\n/g, '<br>');
+    const draw = () => {
+      if (D.tarot.length < 3 && !deck.length) newDeck();
+      const q = D.qa.length, done1 = D.tarot.length >= 3, themeOk = !!(D.theme && D.form);
+      v.innerHTML = `<h1 class="h">마음 읽기 · 자유 주제</h1>
+        <p class="lead">타로 카드 세 장을 <b>과거 · 현재 · 미래</b> 자리에 뽑으면, AI가 카드의 뜻과 내 대답을 엮어 마음을 읽고 글의 주제를 함께 찾아요. 점을 치는 게 아니라 <b>이야기의 실마리</b>를 찾는 거예요.</p>
+        <p class="svstate" aria-live="polite"></p>
+        <section class="card"><h2 class="h2">① 타로 카드 세 장 <small>과거 · 현재 · 미래</small></h2>
+          <div class="tr-slots">${POS.map((p, i) => { const x = D.tarot[i], c = x && card(x.n); return `<div class="tr-slot ${c ? 'on' : i === D.tarot.length ? 'next' : ''}"><span class="tr-pos">${p}</span>${c ? `<img src="${tarotImg(c.n)}" alt="${esc(c.ko)}"><b>${esc(c.ko)}</b><small>${esc(c.keys)}</small>` : `<img src="/tarot/back.svg" alt="" class="tr-back"><b>${i === D.tarot.length ? '이번에 뽑을 자리' : '&nbsp;'}</b>`}</div>`; }).join('')}</div>
+          ${done1 ? `<div class="tr-read">${D.tarot.map(x => { const c = card(x.n); return `<p><b>${esc(x.pos)} · ${esc(c.ko)}</b> ${esc(c.keys)}<br><small>이야기 실마리: ${esc(c.story)}</small></p>`; }).join('')}</div>
+            <p class="muted">세 장을 다 뽑았어요. <button class="linkbtn" id="mReset">카드 다시 섞기</button></p>`
+          : !shuffled ? `<p class="muted">마음속에 떠오르는 사람이나 장소를 하나 그리며 <b>카드 섞기</b>를 눌러 주세요.</p><div class="tr-shuf"><button class="btn btn-main" id="mShuf">카드 섞기</button></div>`
+          : `<p class="muted"><b>${POS[D.tarot.length]}</b> 자리에 놓을 카드 — 손이 가는 카드를 눌러요.</p>
+            <div class="tr-deck">${deck.map((n, i) => `<button class="tr-c" data-tc="${i}" aria-label="뒤집힌 카드 ${i + 1}"><img class="b" src="/tarot/back.svg" alt=""><img class="f" src="${tarotImg(n)}" alt=""></button>`).join('')}</div>`}</section>
+        <section class="card ${done1 ? '' : 'dim'}"><h2 class="h2">② 마음 읽기 <small>대답하기 싫은 질문은 건너뛰어도 돼요</small></h2>
+          ${q ? `<ol class="qa">${D.qa.map((x, i) => `<li><p class="qa-q">${esc(x.q)}</p><textarea rows="2" data-qa="${i}" placeholder="떠오르는 대로 (건너뛰어도 돼요)">${esc(x.a || '')}</textarea></li>`).join('')}</ol>` : '<p class="muted">카드 세 장을 뽑으면 AI가 카드의 뜻과 자리로 질문 8개를 해요.</p>'}
+          <div class="row" style="flex-wrap:wrap;gap:.5rem"><button class="btn btn-ai" id="mQ" ${done1 ? '' : 'disabled'}>${q ? '질문 더 받기' : 'AI에게 질문 받기'}</button>
+            <button class="btn btn-main" id="mRead" ${q ? '' : 'disabled'}>${D.reading ? '마음 다시 읽기' : '마음 읽기 받기'}</button></div>
+          ${D.reading ? `<div class="mread"><p class="mread-k">AI가 읽은 마음 <small>· 나만 보여요 (수업 화면에는 안 나와요)</small></p><p>${esc(D.reading).replace(/\n/g, '<br>')}</p></div>` : ''}
+          ${D.themes.length ? `<p class="f-l" style="margin-top:.8rem">추천 주제 — 하나를 누르거나 아래에 직접 적어요</p>
+            <div class="themes">${D.themes.map((t, i) => `<button class="theme ${D.theme === t.title ? 'on' : ''}" data-th="${i}"><b>${esc(t.title)}</b><span>${esc(t.form)} · ${esc(t.ratio)}</span><small>${esc(t.why)}</small></button>`).join('')}</div>` : ''}
+          ${q ? `<div class="theme-set">
+            <label class="f" for="mTheme">내 주제<input id="mTheme" data-k="theme" value="${esc(D.theme)}" placeholder="예) 철길 너머로 날아간 새"></label>
+            <div class="f"><span>형식</span><div class="seg-btns" id="mForm">${FORMS5.map(f => `<button type="button" data-form="${f}" aria-pressed="${D.form === f}">${f}</button>`).join('')}</div></div>
+            <label class="f" for="mRatio">사실과 상상<select id="mRatio">${RATIOS.map(r => `<option ${D.ratio === r ? 'selected' : ''}>${r}</option>`).join('')}</select></label></div>` : ''}</section>
+        <section class="card ${themeOk ? '' : 'dim'}"><h2 class="h2">③ 쓰기 <small>${themeOk ? `「${esc(D.theme)}」 · ${esc(D.form)} · ${esc(D.ratio)}` : '주제와 형식을 먼저 정해요'}</small></h2>
+          <ol class="wsteps">
+            <li class="ws ${D.aidraft ? 'done' : themeOk ? 'now' : ''}"><div class="ws-h"><b>3-1</b><span>AI 초안 받기</span>${D.aidraft ? '<i>✓</i>' : ''}</div>
+              <p class="muted">타로 카드·대답·주제로 AI가 ${esc(D.form || '글')}의 짧은 뼈대(300~500자)를 써 줘요. 내가 고쳐 쓰기 좋게 짧게 나와요.</p>
+              <button class="btn btn-ai" id="mDraft" ${themeOk ? '' : 'disabled'}>${D.aidraft ? 'AI 초안 다시 받기' : 'AI 초안 받기'}</button>
+              ${D.aidraft ? `<details class="aid"><summary>AI가 처음 쓴 초안 보기</summary><p>${esc(D.aidraft).replace(/\n/g, '<br>')}</p></details>` : ''}</li>
+            <li class="ws ${editedOk() ? 'done' : D.aidraft || mineOk() ? 'now' : ''}"><div class="ws-h"><b>3-2</b><span>내가 다듬기</span>${editedOk() ? '<i>✓</i>' : ''}</div>
+              <p class="muted">AI 초안에 <b>내 기억 한 가지</b>를 더하고, 마음에 안 드는 문장은 지우거나 바꿔요. ${D.form === '시' ? '줄바꿈도 내 마음대로.' : ''} 직접 처음부터 써도 돼요.</p>
+              <textarea id="mMine" rows="7" data-k="mine" class="${D.form === '시' ? 'poemta' : ''}" placeholder="3-1에서 AI 초안을 받으면 여기에 들어와요. 직접 써도 돼요.">${esc(D.mine)}</textarea>
+              ${D.aidraft && !editedOk() && mineOk() ? '<small class="muted" id="mEditHint">아직 AI 초안 그대로예요. 한 군데라도 내 말로 고쳐야 3-3이 열려요.</small>' : ''}</li>
+            <li class="ws ${D.text ? 'done' : editedOk() && themeOk ? 'now' : ''}"><div class="ws-h"><b>3-3</b><span>AI가 구체화하기 <small>${esc(D.form || '형식')}의 짜임새로</small></span>${D.text ? '<i>✓</i>' : ''}</div>
+              <p class="muted">내가 다듬은 글을 뼈대로 카드의 상징과 대답을 엮어 ${esc(D.form || '글')}의 짜임새에 맞게 살찌워요. 사실과 상상은 「${esc(D.ratio)}」로 섞어요.</p>
+              <div class="f"><span>분량</span><div class="seg-btns" id="pLen">${LENS.map(([k, l]) => `<button type="button" data-len="${k}" aria-pressed="${D.len === k}">${l}</button>`).join('')}</div></div>
+              <button class="btn btn-ai" id="mDev" ${editedOk() && themeOk ? '' : 'disabled'}>${D.text ? 'AI가 다시 구체화하기' : 'AI가 구체화하기'}</button></li>
+            <li class="ws ${D.toneDone ? 'done' : D.text ? 'now' : ''}"><div class="ws-h"><b>3-4</b><span>내가 말투 고치기</span>${D.toneDone ? '<i>✓</i>' : ''}</div>
+              ${D.text || D.title ? `<label class="f" for="mTitle">제목<input id="mTitle" data-k="title" value="${esc(D.title)}"></label>
+              <label class="f" for="mText">글 <small>고친 내용은 자동으로 저장돼요</small><textarea id="mText" rows="12" data-k="text" class="${D.form === '시' ? 'poemta' : ''}">${esc(D.text)}</textarea></label>
+              <label class="check"><input type="checkbox" id="mTone" ${D.toneDone ? 'checked' : ''}> 내 말투로 다 고쳤어요</label>` : '<p class="muted">3-3을 하면 여기에 글이 나와요.</p>'}</li>
+            <li class="ws ${D.review || D.marked || D.shrunk ? 'done' : ''}"><div class="ws-h"><b>3-5</b><span>다듬기 <small>필요한 것만</small></span></div>
+              ${D.text ? `<p class="fitline" id="pFit"></p>
+              <div class="row" style="flex-wrap:wrap;gap:.4rem">
+                <button class="btn btn-small btn-ai" id="mReview">AI 첨삭 받기</button>
+                <button class="btn btn-small btn-ai" id="mMarks">사실·상상 표시 보기</button>
+                <button class="btn btn-small btn-ai" data-shrink="p1">한 쪽으로</button><button class="btn btn-small btn-ai" data-shrink="p2">한 장(2쪽)으로</button><button class="btn btn-small btn-ai" data-shrink="p4">두 장(4쪽)으로</button>
+                ${D.prev ? '<button class="btn btn-small btn-ghost" id="pUndo">바꾸기 전으로 되돌리기</button>' : ''}</div>
+              <div class="f" style="margin-top:.5rem"><span>형식 바꿔 보기 <small>같은 내용을 다른 형식으로 써 보고 비교해요</small></span><div class="row" style="flex-wrap:wrap;gap:.4rem">${FORMS5.filter(f => f !== D.form).map(f => `<button class="btn btn-small" data-reform="${f}">${f}(으)로</button>`).join('')}</div></div>
+              ${D.review ? `<div class="mrev"><p><b>잘된 점</b> ${esc(D.review.good)}</p><ol>${D.review.fixes.map(x => `<li>${esc(x)}</li>`).join('')}</ol><small class="muted">3-4 글에서 직접 고쳐 보세요.</small></div>` : ''}
+              ${D.marked ? `<div class="mmark"><p class="mread-k"><span class="lg">사실(내 기억)</span> <mark class="fic">상상(지어낸 부분)</mark> <button class="linkbtn" id="mMarkX">닫기</button></p><div class="mmark-t">${markHTML(D.marked)}</div></div>` : ''}
+              ${D.alt ? `<div class="malt"><p class="mread-k">${esc(D.alt.form)}(으)로 바꿔 본 글 — 「${esc(D.alt.title)}」</p><div class="mmark-t">${esc(D.alt.text).replace(/\n/g, '<br>')}</div>
+                <div class="row" style="gap:.4rem;flex-wrap:wrap;margin-top:.5rem"><button class="btn btn-small btn-main" id="mAltUse">이 형식으로 바꾸기</button><button class="btn btn-small btn-ghost" id="mAltX">원래대로 두기</button></div></div>` : ''}`
+              : '<p class="muted">글이 생기면 쓸 수 있어요.</p>'}</li>
+          </ol></section>
+        <section class="card ${D.text ? '' : 'dim'}"><h2 class="h2">④ 그림(선택) · 내 책에 넣기</h2>
+          <div class="ph-row"><div class="ph-pic">${D.img && D.img.url ? `<img src="${esc(D.img.thumb || D.img.url)}" alt="">` : '<span>그림 없음<br><small>시는 글만이어도 좋아요</small></span>'}</div>
+            <div class="ph-btns"><button class="btn btn-ai" data-mi="ai" ${D.text ? '' : 'disabled'}>AI로 그림 그리기</button><button class="btn" data-mi="up">사진·그림 올리기</button>${D.img ? '<button class="btn" data-mi="tune">사진 손보기</button><button class="btn btn-ghost" data-mi="x">그림 빼기</button>' : ''}</div></div>
+          <p class="muted" id="pBookInfo"></p>
+          <button class="btn btn-main" id="mBook" ${D.text ? '' : 'disabled'}>내 책에 넣기</button></section>
+        <p class="svstate" aria-live="polite"></p>`;
+      checkFit();
+    };
+    let fitT = null;
+    const ptpl = () => D.form === '시' ? 'poem' : 'text';
+    const checkFit = () => { clearTimeout(fitT); fitT = setTimeout(async () => {
+      const el = $('#pFit', v), info = $('#pBookInfo', v); if (!window.Book || !D.text) { if (info) info.textContent = ''; return; }
+      const tp = await textPages(D.title, D.text, 'free', '', ptpl()); if (!v.isConnected) return;
+      const n = tp.length + (D.img ? 1 : 0);
+      if (el) { el.className = 'fitline ' + (n <= 4 ? 'ok' : 'over'); el.textContent = `글 ${tp.length}쪽${D.img ? ' + 그림 1쪽' : ''} = ${n}쪽${n > 4 ? ' — 자유 주제는 2~4쪽이 좋아요. 줄여 보세요' : ''}`; }
+      if (info) info.textContent = `${D.img ? '그림 1쪽 + ' : ''}글 ${tp.length}쪽 = ${n}쪽으로 들어가요.`;
+    }, 500); };
+    draw();
+    v.oninput = e => {
+      const k = e.target.dataset.k; if (k) { const was = mineOk(); D[k] = e.target.value; later(); if (k === 'text' || k === 'title') checkFit(); if (k === 'mine') { const b = $('#mDev', v); if (b) b.disabled = !(editedOk() && D.theme && D.form); const h = $('#mEditHint', v); if (h) h.hidden = editedOk(); } if (k === 'theme') $$('[data-th]', v).forEach(b => b.classList.toggle('on', D.themes[+b.dataset.th].title === D.theme)); return; }
+      const qi = e.target.dataset.qa; if (qi != null) { D.qa[+qi].a = e.target.value; later(); }
+    };
+    v.onchange = e => { if (e.target.id === 'mRatio') { D.ratio = e.target.value; later(); } };
+    const ai = async (btn, label, fn) => { if (!aiOk() && !(await askAi())) return; await busy(btn, label, async () => { await save(); await fn(); }); };
+    v.onclick = async e => {
+      const t = e.target;
+      if (t.closest('#mShuf')) { const d0 = $('.tr-shuf', v); d0.classList.add('go'); setTimeout(() => { shuffled = true; newDeck(); draw(); }, 1300); return; }
+      const tc = t.closest('[data-tc]');
+      if (tc && !tc.classList.contains('open')) {
+        if ($('.tr-c.open', v)) return; tc.classList.add('open'); const n = deck[+tc.dataset.tc];
+        setTimeout(async () => { D.tarot.push({ n, pos: POS[D.tarot.length] }); D.picks = D.tarot.map(x => card(x.n).ko); newDeck(); await save(); draw(); if (D.tarot.length === 3) toast(`과거 ${D.picks[0]} · 현재 ${D.picks[1]} · 미래 ${D.picks[2]}`); }, 1300);
+        return;
+      }
+      if (t.closest('#mReset')) { if (!(await ask('카드를 다시 섞어 처음부터 뽑을까요?', '질문과 대답은 그대로 남아요.', '다시 섞기'))) return; D.tarot = []; D.picks = []; deck = []; shuffled = false; await save(); draw(); return; }
+      if (t.closest('#mQ')) return ai(t.closest('#mQ'), '카드를 읽는 중… (15초쯤)', async () => { const r = await askAI({ mode: 'mq', ...base() }); D.qa.push(...(r.qs || []).map(q => ({ q, a: '' }))); await save(); draw(); });
+      if (t.closest('#mRead')) return ai(t.closest('#mRead'), '마음을 읽는 중… (20초쯤)', async () => { const r = await askAI({ mode: 'mread', ...base() }); D.reading = r.reading; D.themes = r.themes || []; await save(); draw(); });
+      const th = t.closest('[data-th]'); if (th) { const x = D.themes[+th.dataset.th]; D.theme = x.title; D.form = x.form; if (RATIOS.includes(x.ratio)) D.ratio = x.ratio; else { const m = String(x.ratio).match(/(\d+)/); if (m) D.ratio = RATIOS.reduce((a, r) => Math.abs(+r.match(/\d+/)[0] - +m[1]) < Math.abs(+a.match(/\d+/)[0] - +m[1]) ? r : a, RATIOS[1]); } await save(); draw(); return; }
+      const fm = t.closest('[data-form]'); if (fm) { D.form = fm.dataset.form; await save(); draw(); return; }
+      const ln = t.closest('[data-len]'); if (ln) { D.len = ln.dataset.len; $$('[data-len]', v).forEach(x => x.setAttribute('aria-pressed', x === ln)); later(); return; }
+      if (t.closest('#mDraft')) {
+        if (D.mine && D.mine !== D.aidraft && !(await ask('AI 초안을 다시 받을까요?', '3-2에서 고친 글이 새 초안으로 바뀌어요.', '다시 받기'))) return;
+        return ai(t.closest('#mDraft'), '초안 쓰는 중… (20초쯤)', async () => { const r = await askAI({ mode: 'fdraft', ...base() }); D.aidraft = r.text; D.mine = r.text; if (!D.title) D.title = r.title; await save(); draw(); toast('AI 초안이 3-2에 들어갔어요. 내 기억 한 가지를 더해 고쳐 주세요.'); });
+      }
+      if (t.closest('#mDev')) {
+        if (D.text && !(await ask('AI가 다시 구체화할까요?', '지금 3-4의 글은 "바꾸기 전으로 되돌리기"로 한 번 되살릴 수 있어요.', '다시 구체화하기'))) return;
+        return ai(t.closest('#mDev'), '구체화하는 중… (30초~1분)', async () => {
+          const r = await askAI({ mode: 'fstory', ...base() }); let text = r.text || '', more = r.more;
+          for (let k = 1; more && k <= 5; k++) { const b = $('#mDev', v); if (b) b.textContent = `이어서 쓰는 중… (${k + 1}번째)`;
+            const r2 = await askAI({ mode: 'fmore', ...base(), title: r.title, text }); const add = String(r2.text || ''); if (!add.trim()) break;
+            text = /[.!?…"”’)]\s*$/.test(text) ? text.trimEnd() + '\n\n' + add.trimStart() : text + add; more = r2.more; }
+          if (D.text) D.prev = D.text; D.title = (r.title || D.title || '').trim(); D.text = text.trim(); D.ai = D.text; D.toneDone = false; D.review = null; D.marked = ''; D.alt = null; D.shrunk = ''; await save(); draw(); toast('구체화했어요. 3-4에서 내 말투로 고쳐 주세요.');
+        });
+      }
+      if (t.id === 'mTone') { D.toneDone = t.checked; await save(); draw(); return; }
+      if (t.closest('#mReview')) return ai(t.closest('#mReview'), '읽어 보는 중…', async () => { const r = await askAI({ mode: 'review', text: D.text, form: D.form }); D.review = { good: r.good, fixes: r.fixes || [] }; await save(); draw(); });
+      if (t.closest('#mMarks')) return ai(t.closest('#mMarks'), '표시하는 중…', async () => { const r = await askAI({ mode: 'marks', text: D.text, qa: D.qa }); D.marked = r.marked; await save(); draw(); });
+      if (t.closest('#mMarkX')) { D.marked = ''; await save(); draw(); return; }
+      const rf = t.closest('[data-reform]'); if (rf) return ai(rf, '바꿔 쓰는 중… (30초쯤)', async () => { const r = await askAI({ mode: 'reform', text: D.text, to: rf.dataset.reform }); D.alt = { form: rf.dataset.reform, title: r.title, text: r.text }; await save(); draw(); });
+      if (t.closest('#mAltUse')) { D.prev = D.text; D.text = D.alt.text; D.title = D.alt.title || D.title; D.form = D.alt.form; D.alt = null; D.marked = ''; await save(); draw(); toast('형식을 바꿨어요. "바꾸기 전으로 되돌리기"로 돌아갈 수 있어요.'); return; }
+      if (t.closest('#mAltX')) { D.alt = null; await save(); draw(); return; }
+      const sk = t.closest('[data-shrink]'); if (sk) return ai(sk, '줄이는 중…', async () => { const r = await askAI({ mode: 'shrink', text: D.text, target: sk.dataset.shrink }); D.prev = D.text; D.text = r.text; D.shrunk = { p1: '한 쪽', p2: '한 장(2쪽)', p4: '두 장(4쪽)' }[sk.dataset.shrink]; D.marked = ''; await save(); draw(); });
+      if (t.closest('#pUndo')) { const x = D.text; D.text = D.prev; D.prev = x; D.marked = ''; await save(); draw(); return; }
+      const mi = t.closest('[data-mi]');
+      if (mi) {
+        const k = mi.dataset.mi;
+        if (k === 'ai') { const im = await genImage({ frame: PICFR, text: D.text.slice(0, 600), whole: [D.title, D.text].join('\n\n'), scene: `타로 카드: ${D.picks.join(', ')}` }); if (im) { D.img = im; await save(); draw(); } return; }
+        if (k === 'up') { const f = await pickFile(); if (!f) return; await busy(mi, '올리는 중…', async () => { D.img = await uploadImage(f); await save(); draw(); }); return; }
+        if (k === 'tune') { const im = await photoTools({ url: D.img.url }); if (im) { D.img = im; await save(); draw(); } return; }
+        if (k === 'x') { D.img = null; await save(); draw(); return; }
+      }
+      if (t.closest('#mBook')) {
+        await busy(t.closest('#mBook'), '넣는 중…', async () => {
+          await save();
+          const pages = (D.img ? [{ tpl: 'fullSafe', sec: 'free', imgs: [D.img], hint: '자유 주제 — 그림 (5회차)' }] : []).concat(await textPages(D.title, D.text, 'free', `자유 주제 — ${D.form || '글'} (5회차)`, ptpl()));
+          const n = await appendPage(pages); D.inBook = true; await save(); toast(`내 책에 ${pages.length}쪽을 넣었어요 (지금 모두 ${n}쪽). "내 책 구성표"로 짝수를 확인해 주세요.`);
         });
       }
     };
