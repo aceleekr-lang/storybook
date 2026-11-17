@@ -93,7 +93,7 @@
     go.onclick = () => {
       if (id) { clearInterval(id); id = null; go.textContent = '이어서'; return; }
       go.textContent = '멈춤';
-      id = setInterval(() => { left = Math.max(0, left - 1); draw(); if (!left) { clearInterval(id); id = null; go.textContent = '끝!'; } }, 1000);
+      id = setInterval(() => { left = Math.max(0, left - 1); draw(); if (!left) { clearInterval(id); id = null; go.textContent = '끝!'; sfx('bell'); } }, 1000);
     };
     tm.querySelector('[data-t=reset]').onclick = () => { clearInterval(id); id = null; left = min * 60; go.textContent = '시작'; draw(); };
     draw();
@@ -265,8 +265,8 @@
   $('#ansv').addEventListener('click', e => { if (e.target.id === 'ansv' || e.target.id === 'ansClose') $('#ansv').hidden = true; });
   addEventListener('keydown', e => { if (e.key === 'Escape') $('#ansv').hidden = true; });
   document.addEventListener('click', async e => {
-    const c = e.target.closest('[data-ans]'); if (c) { const [act, id] = c.dataset.ans.split('|'); showAnswer(act, id); return; }
-    const ivb = e.target.closest('[data-iv]'); if (ivb) { showInterview(ivb.dataset.iv, ivb.textContent); return; }
+    const c = e.target.closest('[data-ans]'); if (c) { const [act, id] = c.dataset.ans.split('|'); sfx('reveal'); showAnswer(act, id); return; }
+    const ivb = e.target.closest('[data-iv]'); if (ivb) { sfx('reveal'); showInterview(ivb.dataset.iv, ivb.textContent); return; }
     const tab = e.target.closest('[data-ivtab]');
     if (tab) { $$('.ivtab').forEach(b => b.setAttribute('aria-pressed', b === tab)); $$('.ivpane').forEach(x => { x.hidden = x.dataset.pane !== tab.dataset.ivtab; }); return; }
     const ap = e.target.closest('[data-approve]');
@@ -375,8 +375,8 @@
   const sd = $('#symdemo');
   if (sd) {
     const deal = () => { const a = (window.TAROT || []).map(x => x.n); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } sd.innerHTML = a.map(n => `<button class="tc"><img class="b" src="/tarot/back.svg" alt=""><img class="f" src="${tarotImg(n)}" alt=""></button>`).join(''); };
-    deal(); sd.onclick = e => { const b = e.target.closest('.tc'); if (b) b.classList.toggle('open'); };
-    const rs = $('#symShuf'); if (rs) rs.onclick = deal;
+    deal(); sd.onclick = e => { const b = e.target.closest('.tc'); if (b) sfx(b.classList.toggle('open') ? 'flip' : 'close'); };
+    const rs = $('#symShuf'); if (rs) rs.onclick = () => { deal(); sfx('shuffle'); };
   }
   const c3 = $('#cards3');
   if (c3) {
@@ -460,6 +460,8 @@
   function renderProg() {
     $$('[data-prog]').forEach(el => {
       const t = el.dataset.prog, ms = approved(), done = ms.filter(PRED[t]);
+      const ids = done.map(m => m.id).join(','), was = el.dataset.doneIds; el.dataset.doneIds = ids; // 새로 완료한 사람이 생기면, 보이는 화면에서만 딩동
+      if (was !== undefined && done.some(m => !was.split(',').includes(m.id)) && !el.closest('.slide').hidden) sfx('done');
       setH(el, `<p>${PLABEL[t]} <b>${done.length}</b> / ${ms.length}명</p>
         <div class="chiprow">${ms.map(m => { const st = t === 'ptext' ? stepOf(m.id) : ''; return PRED[t](m) ? `<button class="chip done" style="--c:${colorOf(m.id)}" data-pv="${t}|${m.id}">✓ ${esc(m.name)}${st ? ` · ${st}` : ''}</button>` : `<span class="chip not" style="--c:${colorOf(m.id)}">${esc(m.name)}${st ? ` · ${st}` : ''}</span>`; }).join('')}</div>`);
     });
@@ -572,7 +574,7 @@
   const addTts = v => { const tx = v.querySelector('.sv-text, .bkv-z p:not(.muted)'); if (!tx || v.querySelector('[data-tts]')) return; const k = v.querySelector('.sv-k'); const b = '<button class="btn tts" data-tts>🔊 읽어 주기</button>'; if (k) k.insertAdjacentHTML('beforeend', ' ' + b); else v.insertAdjacentHTML('afterbegin', b); };
   document.addEventListener('click', e => { const b = e.target.closest('[data-tts]'); if (!b) return; const v = b.closest('.spot-v, .pvwrap, .ansv-in'); const title = (v.querySelector('.sv-title, .bkv-z h4') || {}).textContent || ''; const body = [...v.querySelectorAll('.sv-text, .bkv-z p:not(.muted)')].map(x => x.innerText).join('\n\n'); ttsPlay(b, [title, body].filter(Boolean).join('\n\n')); });
   function spotPick(wrap, id) {
-    const st = SPOT.get(wrap); st.sel = id; st.used.add(id); st.zoom = null;
+    const st = SPOT.get(wrap); st.sel = id; st.used.add(id); st.zoom = null; sfx('reveal');
     wrap.querySelector('.spot-name').textContent = nameOf(id); renderSpots(); spotView(wrap, wrap.dataset.spot, id);
   }
   document.addEventListener('click', e => {
@@ -580,7 +582,7 @@
     if (pv) { // 진행 현황의 이름 → 그 사람이 이 단계에서 한 것
       const [t0, id] = pv.dataset.pv.split('|'), t = PV[t0] || t0;
       $('#ansv').innerHTML = `<div class="ansv-in pvwrap" data-spot="${t}" style="--c:${colorOf(id)}"><div style="display:flex;justify-content:space-between;align-items:center"><p class="ansv-k">${esc(PLABEL[t0] || '')}</p><button class="btn" id="ansClose">닫기</button></div><div class="spot-v"></div></div>`;
-      const w = $('#ansv .pvwrap'); SPOT.set(w, { sel: id, used: new Set() }); $('#ansv').hidden = false; spotView(w, t, id); return;
+      sfx('reveal'); const w = $('#ansv .pvwrap'); SPOT.set(w, { sel: id, used: new Set() }); $('#ansv').hidden = false; spotView(w, t, id); return;
     }
     const wrap = e.target.closest('.spotwrap, .pvwrap'); if (!wrap) return;
     const pk = e.target.closest('[data-spick]'); if (pk) { spotPick(wrap, pk.dataset.spick); return; }
@@ -593,12 +595,13 @@
       const st = SPOT.get(wrap), ms = approved().filter(PRED[wrap.dataset.spot]); let left = ms.filter(m => !st.used.has(m.id));
       if (!ms.length) return; if (!left.length) { st.used.clear(); left = ms; }
       const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches; let n = 0; const end = reduce ? 0 : 14; sp.disabled = true;
-      const step = () => { const m = left[Math.floor(Math.random() * left.length)]; wrap.querySelector('.spot-name').textContent = m.name;
+      const step = () => { const m = left[Math.floor(Math.random() * left.length)]; wrap.querySelector('.spot-name').textContent = m.name; sfx('tick');
         if (n++ < end) { setTimeout(step, 60 + n * 12); return; } sp.disabled = false; spotPick(wrap, m.id); };
       step();
     }
   });
 
+  const bs = $('#bSfx'); if (bs) { const lab = () => { bs.textContent = sfxOn() ? '🔔 소리' : '🔕 소리'; bs.setAttribute('aria-pressed', sfxOn()); }; lab(); bs.onclick = () => { sfxToggle(); lab(); }; }
   applySettings();
   const h = /^#s(\d+)$/.exec(location.hash);
   show(h ? +h[1] - 1 : 0);
