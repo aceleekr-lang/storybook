@@ -1156,9 +1156,9 @@ ${pts.map(([x, y, n]) => `<g transform="translate(${x} ${y})"><circle r="32" fil
         <section class="card ${themeOk ? '' : 'dim'}"><h2 class="h2">③ 쓰기 <small>${themeOk ? `「${esc(D.theme)}」 · ${esc(D.form)} · ${esc(D.ratio)}` : '주제와 형식을 먼저 정해요'}</small></h2>
           <ol class="wsteps">
             <li class="ws ${D.aidraft ? 'done' : themeOk ? 'now' : ''}"><div class="ws-h"><b>3-1</b><span>AI 초안 받기</span>${D.aidraft ? '<i>✓</i>' : ''}</div>
-              <p class="muted">타로 카드·대답·주제로 AI가 ${esc(D.form || '글')}의 짧은 뼈대(300~500자)를 써 줘요. 내가 고쳐 쓰기 좋게 짧게 나와요.</p>
+              <p class="muted">타로 카드·대답·주제로 AI가 ${esc(D.form || '글')}의 짧은 뼈대(300~500자)를 써 줘요. 내 대답의 말은 <b>하나도 그대로 쓰지 않고</b>(이름·지명만 빼고), 인터뷰에서 느낀 이야기와 마음을 <b>문학적인 말로 새로 지어</b> 보여 줘요. 다시 받으면 다른 방식으로 엮어요.</p>
               <button class="btn btn-ai" id="mDraft" ${themeOk ? '' : 'disabled'}>${D.aidraft ? 'AI 초안 다시 받기' : 'AI 초안 받기'}</button>
-              ${D.aidraft ? `<details class="aid"><summary>AI가 처음 쓴 초안 보기</summary><p>${esc(D.aidraft).replace(/\n/g, '<br>')}</p></details>` : ''}</li>
+              ${D.draftHow ? `<p class="mhow">엮은 방식 · ${esc(D.draftHow)}</p>` : ''}${D.aidraft ? `<details class="aid"><summary>AI가 처음 쓴 초안 보기</summary><p>${esc(D.aidraft).replace(/\n/g, '<br>')}</p></details>` : ''}</li>
             <li class="ws ${editedOk() ? 'done' : D.aidraft || mineOk() ? 'now' : ''}"><div class="ws-h"><b>3-2</b><span>내가 다듬기</span>${editedOk() ? '<i>✓</i>' : ''}</div>
               <p class="muted">AI 초안에 <b>내 기억 한 가지</b>를 더하고, 마음에 안 드는 문장은 지우거나 바꿔요. ${D.form === '시' ? '줄바꿈도 내 마음대로.' : ''} 직접 처음부터 써도 돼요.</p>
               <textarea id="mMine" rows="7" data-k="mine" class="${D.form === '시' ? 'poemta' : ''}" placeholder="3-1에서 AI 초안을 받으면 여기에 들어와요. 직접 써도 돼요.">${esc(D.mine)}</textarea>
@@ -1231,7 +1231,7 @@ ${pts.map(([x, y, n]) => `<g transform="translate(${x} ${y})"><circle r="32" fil
       const ln = t.closest('[data-len]'); if (ln) { D.len = ln.dataset.len; $$('[data-len]', v).forEach(x => x.setAttribute('aria-pressed', x === ln)); later(); return; }
       if (t.closest('#mDraft')) {
         if (D.mine && D.mine !== D.aidraft && !(await ask('AI 초안을 다시 받을까요?', '3-2에서 고친 글이 새 초안으로 바뀌어요.', '다시 받기'))) return;
-        return ai(t.closest('#mDraft'), '초안 쓰는 중… (20초쯤)', async () => { const r = await askAI({ mode: 'fdraft', ...base() }); D.aidraft = r.text; D.mine = r.text; if (!D.title) D.title = r.title; await save(); draw(); toast('AI 초안이 3-2에 들어갔어요. 내 기억 한 가지를 더해 고쳐 주세요.'); });
+        return ai(t.closest('#mDraft'), '초안 쓰는 중… (20초쯤)', async () => { const r = await askAI({ mode: 'fdraft', ...base(), prevHow: D.aidraft ? D.draftHow : '' }); D.aidraft = r.text; D.mine = r.text; D.draftHow = r.how || ''; if (!D.title) D.title = r.title; await save(); draw(); toast('AI 초안이 3-2에 들어갔어요. 내 기억 한 가지를 더해 고쳐 주세요.'); });
       }
       if (t.closest('#mDev')) {
         if (D.text && !(await ask('AI가 다시 구체화할까요?', '지금 3-4의 글은 "바꾸기 전으로 되돌리기"로 한 번 되살릴 수 있어요.', '다시 구체화하기'))) return;

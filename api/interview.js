@@ -122,8 +122,27 @@ const CRAFT = {
   수필: '수필: 1인칭 체험을 구체적인 장면으로 보여 주고, 그 체험에서 얻은 깨달음을 억지 교훈 없이 담백하게 닫습니다. 체험(발단) → 사건의 전개 → 마음이 크게 움직이는 순간 → 지금의 나.',
   동화: '동화: 주인공(사람·동물·사물) → 주인공의 바람 → 길을 막는 시련 → 도움이나 깨달음 → 변화한 결말. 아이도 소리 내어 읽기 좋은 쉬운 문장과 의성어·의태어, 반복되는 말. 타로 카드 그림 속 사물·인물이 등장인물이나 열쇠가 되게 합니다.'
 };
+const RECOMPOSE = `- 문답은 받아 적을 재료가 아닙니다. 인터뷰를 하며 느낀 그분의 이야기와 마음결(무엇을 그리워하고, 무엇을 붙잡고 싶고, 어떤 빛깔의 시간을 살아왔는지)을 먼저 깊이 이해한 뒤, 그것을 문학의 언어로 새로 지어 전합니다.
+- 가장 중요한 규칙: 대답에 나온 낱말은 단 하나도 그대로 쓰지 않습니다. 명사·동사·형용사·부사 모두 같은 뜻의 다른 말, 비유, 이미지, 감각으로 바꿉니다. 예) 대답 "할머니 댁 마루에서 수박을 먹었어요" → "주름진 손이 갈라 준 여름의 붉은 속살, 나무 바닥에 번지던 서늘한 그늘". 단, 사람 이름과 지명(가곡동·밀양역·순이 할머니 같은 고유명사)만은 사실이므로 그대로 둡니다.
+- 문답 순서나 카드 순서대로 따라가지 않고, 대답마다 한 문단씩 늘어놓지도 않습니다.
+- 아래 재구성 방식 가운데 형식과 이야기에 가장 어울리는 하나를 골라 글 전체의 축으로 삼습니다.
+  · 시간 뒤집기: 지금(또는 마지막 장면)에서 시작해 과거로 거슬러 갔다가 돌아오기
+  · 한 사물의 눈: 이야기 속 물건·장소가 화자가 되어 들려주기
+  · 한 순간 확대: 한 장면을 크게 펼치고, 다른 기억은 그 장면 속 떠오름으로 끼워 넣기
+  · 되풀이되는 감각: 하나의 소리·냄새·빛을 고리로 서로 떨어진 기억을 잇기
+  · 말 걸기: 그리운 사람이나 미래의 누군가에게 건네는 편지·독백
+  · 대비: 그때와 지금, 사실과 상상을 나란히 놓아 비추기
+- 문학성: 설명하지 말고 보여 줍니다. 구체적인 이미지와 감각, 비유, 문장의 리듬, 여백으로 마음을 전하고, 감정을 이름 붙여 말하지("그리웠다", "행복했다") 않습니다. 누가·어디서·무엇을 했는지 같은 사실의 뼈대는 바꾸지 않습니다.`;
+// 대답 속 낱말이 초안에 그대로 들어갔는지 (조사·어미를 떼고 2글자 이상, 고유명사로 보이는 말 제외)
+const PROPER = /(동|역|시|읍|면|리|강|산|천|교|길|로|시장|학교|마을|공원)$/;
+const STOP = new Set(['그때', '그날', '지금', '우리', '저희', '정말', '너무', '그냥', '조금', '많이', '같아', '같은', '있었', '없었', '했어', '했던', '하는', '있는', '없는', '그런', '이런', '저런', '어릴', '생각', '기억', '마음', '사람', '때문']);
+const echoed = (qa, text) => { const t = String(text || ''), seen = new Set();
+  (Array.isArray(qa) ? qa : []).forEach(x => String((x && x.a) || '').split(/[^가-힣A-Za-z0-9]+/).forEach(w => {
+    let k = w; for (let n = 0; n < 3; n++) k = k.replace(/(에서는|에서|으로|에게|한테|까지|부터|처럼|이랑|하고|이에요|예요|에요|어요|아요|였어요|었어요|았어요|했어요|이었|였|은|는|이|가|을|를|에|의|와|과|도|만|로|요|다)$/, '');
+    if (k.length >= 2 && !STOP.has(k) && !PROPER.test(k) && t.includes(k)) seen.add(k); }));
+  return [...seen]; };
 const FSTORY = (len, form, ratio, mine) => `당신은 주민과 함께 마을 이야기책을 만드는 글쓰기 선생님입니다. 참여자가 과거·현재·미래 자리에 뽑은 타로 카드 세 장, 문답, 정한 주제로 ${form || '수필'} 한 편을 씁니다. 배경은 경상남도 밀양시 가곡동과 참여자의 삶입니다.
-${mine ? '- 참여자가 직접 쓴 <내 초안>을 뼈대로 삼아 구체화합니다. 초안의 사건 순서·표현·문장·말투를 최대한 살리고, 문답에서 장면과 마음을 찾아 채웁니다.' : ''}
+${mine ? '- 참여자가 직접 쓴 <내 초안>을 뼈대로 삼아 구체화합니다. 초안의 사건 순서·표현·문장·말투를 최대한 살리고, 문답에서 장면과 마음을 찾아 채웁니다.' : RECOMPOSE}
 - 형식의 짜임새를 지킵니다. ${CRAFT[form] || CRAFT['수필']}
 - 사실과 허구를 섞습니다. ${ratio || '사실 70 상상 30'} 정도로, 문답에 나온 실제 기억(특히 과거·현재 카드)을 뼈대로 하고 카드에서 온 상상(특히 미래 카드)을 자연스럽게 엮습니다. 실제 사람·장소의 이름은 문답에 나온 것만 씁니다.
 - 뽑은 타로 카드 세 장의 상징(그림 속 사물·빛·몸짓)과 과거→현재→미래의 흐름이 글 안에 자연스럽게 녹아들게 합니다. 카드 이름을 그대로 나열하지 않습니다.
@@ -241,9 +260,12 @@ module.exports = async function handler(req, res) {
         const th = [j.t1, j.t2, j.t3].map(x => String(x || '').split('|').map(y => y.trim())).filter(x => x[0]).map(([title, form, ratio, why]) => ({ title: clip(title, 40), form: ['시', '산문', '수필', '동화'].includes(form) ? form : '수필', ratio: clip(ratio, 30), why: clip(why, 200) }));
         out = { reading: clip(j.reading, 600).trim(), themes: th };
       } else if (mode === 'fdraft') { // 3-1 AI 초안: 참여자가 고치기 좋은 짧은 뼈대
-        const j = await claudeJSON({ system: FSTORY('p1', form, ratio, '') + `\n\n지금은 '초안'입니다. 참여자가 직접 고쳐 쓸 뼈대이므로 공백 포함 300~500자(시는 3연 이하)로 짧고 쉽게 씁니다. 처음·가운데·끝이 보이게 하되 꾸밈은 줄이고, 참여자가 자기 기억을 덧붙일 자리를 남깁니다.`,
-          messages: [{ role: 'user', content: info }], max_tokens: 2000, schema: { title: 1, text: 1 } });
-        out = { title: clip(j.title, 60).trim(), text: clip(j.text, 3000).trim() };
+        let j = await claudeJSON({ system: FSTORY('p1', form, ratio, '') + `\n\n지금은 '초안'입니다. 참여자가 직접 고쳐 쓸 뼈대이므로 공백 포함 300~500자(시는 3연 이하)로 짧고 쉽게 씁니다. 처음·가운데·끝이 보이게 하되 꾸밈은 줄이고, 참여자가 자기 기억을 덧붙일 자리를 남깁니다.\n- how: 고른 재구성 방식과 축을 한 줄로. 예) "시간 뒤집기 — 오늘 철길에서 시작해 할머니 댁 여름으로"${body.prevHow ? `\n- 지난번 초안은 '${clip(body.prevHow, 80)}' 방식이었습니다. 이번에는 다른 재구성 방식을 고릅니다.` : ''}`,
+          messages: [{ role: 'user', content: info }], max_tokens: 2000, schema: { title: 1, how: 1, text: 1 } });
+        let j2 = j; const hits = echoed(body.qa, j.text);
+        if (hits.length >= 2) { try { const r2 = await claudeJSON({ system: FSTORY('p1', form, ratio, '') + `\n\n지금은 '초안'입니다. 공백 포함 300~500자(시는 3연 이하).\n- how: 고른 재구성 방식과 축을 한 줄로.`, messages: [{ role: 'user', content: info }, { role: 'assistant', content: `<title>${j.title}</title><how>${j.how}</how><text>${j.text}</text>` }, { role: 'user', content: `대답에 나온 낱말이 그대로 들어갔습니다: ${hits.slice(0, 12).join(', ')}. 이 낱말들을 하나도 쓰지 말고 다른 말·비유·이미지로 바꿔, 같은 재구성 방식으로 다시 써 주세요.` }], max_tokens: 2000, schema: { title: 1, how: 1, text: 1 } }); if (r2.text && echoed(body.qa, r2.text).length < hits.length) j2 = r2; } catch (e) { /* 첫 초안 유지 */ } }
+        j = j2;
+        out = { title: clip(j.title, 60).trim(), how: clip(j.how, 120).trim(), text: clip(j.text, 3000).trim() };
       } else if (mode === 'fmore') {
         const j = await claudeJSON({ system: FSTORY(len, form, ratio, mine) + `\n\n지금은 이어 쓰기입니다. 제목은 「${clip(body.title, 60)}」입니다. <앞부분>은 이미 쓴 글입니다. 되풀이하지 말고 끊긴 바로 다음 글자부터 이어서 결말까지 씁니다.`,
           messages: [{ role: 'user', content: `${info}\n\n<앞부분>\n${clip(body.text, 14000)}\n</앞부분>` }], max_tokens: 5000, schema: { text: 1 } });
