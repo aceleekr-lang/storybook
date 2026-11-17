@@ -1283,7 +1283,7 @@ ${pts.map(([x, y, n]) => `<g transform="translate(${x} ${y})"><circle r="32" fil
       const ln = t.closest('[data-len]'); if (ln) { D.len = ln.dataset.len; $$('[data-len]', v).forEach(x => x.setAttribute('aria-pressed', x === ln)); later(); return; }
       if (t.closest('#mDraft')) {
         if (D.mine && D.mine !== D.aidraft && !(await ask('AI 초안을 다시 받을까요?', '3-2에서 고친 글이 새 초안으로 바뀌어요.', '다시 받기'))) return;
-        return ai(t.closest('#mDraft'), '초안 쓰는 중… (20초쯤)', async () => { const r = await askAI({ mode: 'fdraft', ...base(), prevHow: D.aidraft ? D.draftHow : '' }); D.aidraft = r.text; D.mine = r.text; D.draftHow = r.how || ''; if (!D.title) D.title = r.title; await save(); draw(); toast('AI 초안이 3-2에 들어갔어요. 내 기억 한 가지를 더해 고쳐 주세요.'); });
+        return ai(t.closest('#mDraft'), '초안 쓰는 중… (20초쯤)', async () => { const r = await askAI({ mode: 'fdraft', ...base(), prevHow: D.aidraft ? D.draftHow : '' }); if (!String(r.text || '').trim()) { toast('AI 초안이 비어서 왔어요. 한 번 더 눌러 주세요.', true); return; } D.aidraft = r.text; D.mine = r.text; D.draftHow = r.how || ''; if (!D.title) D.title = r.title; await save(); draw(); toast('AI 초안이 3-2에 들어갔어요. 내 기억 한 가지를 더해 고쳐 주세요.'); });
       }
       if (t.closest('#mDev')) {
         if (D.text && !(await ask('AI가 다시 구체화할까요?', '지금 3-4의 글은 "바꾸기 전으로 되돌리기"로 한 번 되살릴 수 있어요.', '다시 구체화하기'))) return;

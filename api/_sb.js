@@ -68,6 +68,9 @@ async function claudeJSON({ system, messages, max_tokens = 3000, schema }) {
     if (schema[k] === 'scenes') { out[k] = [...raw.matchAll(/<scene>([\s\S]*?)(?:<\/scene>|$)/g)].map(m => ({ text: untag(m[1], 'text') || '', pic: untag(m[1], 'pic') || '' })).filter(x => x.text); if (out[k].length) found++; }
     else { const v = untag(raw, k); out[k] = v || ''; if (v) found++; }
   });
+  if (found && schema.text && !out.text) { // 본문을 태그 밖에 썼으면 다른 태그를 뺀 나머지를 본문으로
+    let rest = raw; keys.forEach(k => { rest = rest.replace(new RegExp(`<${k}>[\\s\\S]*?(?:</${k}>|$)`), ''); });
+    rest = rest.replace(/<\/?[a-z0-9_]+>/gi, '').trim(); if (rest.length > 30) out.text = rest; }
   if (found) { Object.defineProperty(out, 'cut', { value: j.stop_reason === 'max_tokens' }); return out; }
   try { return parseJSON(raw); } catch { /* 태그 없이 글만 왔으면 글 한 칸짜리는 그대로 살림 */ }
   if (keys.includes('text') && raw.trim().length > 30) { const o = { text: raw.trim() }; keys.forEach(k => { if (!(k in o)) o[k] = ''; }); Object.defineProperty(o, 'cut', { value: j.stop_reason === 'max_tokens' }); return o; }
